@@ -13,7 +13,7 @@ export function ScreenWrapper({ children }) {
   const gradientColors =
     mode === "dark"
       ? ["#121317", "#1a1c21", "#2c2d35"]
-      : ["#f8fafc", "#f0f1f2", "#dadbdf"];
+      : ["#f0f1f2", "#f8fafc", "#dadbdf"];
   const authRoutes = ["/login", "/register"];
 
   if (loading && !authRoutes.includes(pathname)) {

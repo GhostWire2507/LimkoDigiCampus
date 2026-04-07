@@ -17,7 +17,12 @@ export function SearchBar({ value, onChangeText, placeholder = "Search..." }) {
         backgroundColor: theme.cardStrong,
         paddingHorizontal: 16,
         paddingVertical: 12,
-        marginBottom: 16
+        marginBottom: 16,
+        shadowColor: theme.shadow,
+        shadowOpacity: 1,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 4
       }}
     >
       <Ionicons name="search-outline" size={18} color={theme.mutedText} />

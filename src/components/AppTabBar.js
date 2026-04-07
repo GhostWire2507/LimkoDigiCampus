@@ -55,7 +55,14 @@ export function AppTabBar() {
             <Pressable
               key={tab.href}
               onPress={() => router.push(tab.href)}
-              style={{ flex: 1, alignItems: "center", gap: 6, paddingVertical: 6 }}
+              style={{
+                flex: 1,
+                alignItems: "center",
+                gap: 6,
+                paddingVertical: 6,
+                borderRadius: 16,
+                backgroundColor: active ? theme.cardStrong : "transparent"
+              }}
             >
               <Ionicons name={active ? tab.icon.replace("-outline", "") : tab.icon} size={18} color={active ? theme.text : theme.mutedText} />
               <AppText variant="caption" style={{ color: active ? theme.text : theme.mutedText }}>
