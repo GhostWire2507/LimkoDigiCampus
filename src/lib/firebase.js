@@ -13,7 +13,7 @@ const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || `${firebaseProject.projectId}.firebaseapp.com`,
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || firebaseProject.projectId,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "limkodigicampus.firebasestorage.app",
   messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || firebaseProject.projectNumber,
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "",
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ""
