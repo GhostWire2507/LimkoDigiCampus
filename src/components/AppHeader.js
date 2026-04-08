@@ -16,5 +16,9 @@ export function AppHeader({ title, subtitle }) {
 }
 
 export function GreetingHeader({ user }) {
+  if (!user) {
+    return <AppHeader title="Hello" subtitle="Loading profile" />;
+  }
+
   return <AppHeader title={`Hello, ${user.fullName.split(" ")[0]}`} subtitle={formatRole(user.role)} />;
 }

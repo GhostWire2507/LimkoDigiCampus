@@ -7,12 +7,13 @@ import { Card } from "../src/components/Card";
 import { TextField } from "../src/components/FormFields";
 import { ScreenWrapper } from "../src/components/ScreenWrapper";
 import { useAuth } from "../src/contexts/AuthContext";
+import { hasFirebaseConfig } from "../src/lib/firebase";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("lecturer@limko.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
     try {
@@ -34,11 +35,13 @@ export default function LoginScreen() {
         </View>
 
         <Card>
-          <TextField label="Email" value={email} onChangeText={setEmail} placeholder="lecturer@limko.com" />
-          <TextField label="Password" value={password} onChangeText={setPassword} placeholder="123456" />
+          <TextField label="Email" value={email} onChangeText={setEmail} placeholder="name@email.com" />
+          <TextField label="Password" value={password} onChangeText={setPassword} placeholder="Your password" />
           <AppButton title="Login" onPress={handleLogin} />
           <AppText variant="caption" style={{ marginTop: 16 }}>
-            Demo accounts: lecturer@limko.com, student@limko.com, prl@limko.com, pl@limko.com
+            {hasFirebaseConfig
+              ? "Use an email and password that already exist in Firebase Auth for this project, or create one first."
+              : "Demo accounts: lecturer@limko.com, student@limko.com, prl@limko.com, pl@limko.com"}
           </AppText>
         </Card>
 

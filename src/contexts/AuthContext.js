@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { bootstrapLocalData, loginUser, registerUser } from "../services/dataService";
-import { loadItem, removeItem, saveItem } from "../services/storage";
+import { bootstrapLocalData, loginUser, registerUser, restoreUserSession, signOutUser } from "../services/dataService";
+import { removeItem, saveItem } from "../services/storage";
 
 const AuthContext = createContext(null);
 
@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     bootstrapLocalData()
-      .then(() => loadItem("currentUser", null))
+      .then(() => restoreUserSession())
       .then((storedUser) => setUser(storedUser))
       .finally(() => setLoading(false));
   }, []);
@@ -32,6 +32,7 @@ export function AuthProvider({ children }) {
         return nextUser;
       },
       signOut: async () => {
+        await signOutUser();
         setUser(null);
         await removeItem("currentUser");
       }

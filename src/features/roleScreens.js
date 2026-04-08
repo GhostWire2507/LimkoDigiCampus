@@ -36,6 +36,10 @@ export function DashboardScreen() {
   const [attendance, setAttendance] = useState([]);
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+
     Promise.all([
       getCoursesForRole(user),
       getReportsForRole(user),
@@ -48,6 +52,15 @@ export function DashboardScreen() {
       setAttendance(attendanceResult);
     });
   }, [user]);
+
+  if (!user) {
+    return (
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <AppHeader title="Dashboard" subtitle="Sign in to load your workspace." />
+        <EmptyState title="Profile unavailable" description="Your account data could not be loaded yet. Sign in again after confirming Firestore access." />
+      </ScrollView>
+    );
+  }
 
   const nextCourse = courses[0];
   const totalPresent = attendance.reduce((sum, item) => sum + Number(item.totalPresent || 0), 0);

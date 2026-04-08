@@ -3,4 +3,20 @@ node_modules
 dist
 web-build
 .env
+.env.*
+!.env.example
 npm-debug.*
+
+# Firebase and mobile platform secrets
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+
+# Local machine and editor files
+.DS_Store
+Thumbs.db
+.idea
+.vscode

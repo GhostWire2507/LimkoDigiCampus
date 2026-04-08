@@ -41,12 +41,32 @@ npx expo start
 Create a `.env` file and add:
 
 ```bash
-EXPO_PUBLIC_FIREBASE_API_KEY=
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-EXPO_PUBLIC_FIREBASE_APP_ID=
+EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-The current app works with local demo data immediately. Once Firebase keys are added, replace the placeholder auth/data methods in `src/services/dataService.js` with Firestore reads and writes.
+Firebase project alignment for this repo:
+
+- Project name: `LimkoDigiCampus`
+- Project ID: `limkodigicampus`
+- Project number: `823990853810`
+
+Get the remaining values from Firebase Console:
+
+1. Open Project settings.
+2. Register a Web app if one does not exist yet.
+3. Copy the Firebase config values into `.env`.
+4. Enable Authentication with Email/Password.
+5. Create Firestore and add the collections `users`, `courses`, `reports`, `ratings`, and `attendance`.
+
+Keep `.env` local only. The repo ignores `.env`, platform credential files, and common signing artifacts so live values do not get committed by mistake.
+
+The app now supports both modes:
+
+- Without Firebase env keys: local demo data in AsyncStorage
+- With Firebase env keys: Firebase Auth + Firestore for login, registration, courses, reports, ratings, and attendance
