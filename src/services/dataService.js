@@ -1,5 +1,4 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import {
   mockAttendance,
   mockClasses,
@@ -10,6 +9,15 @@ import {
   mockUsers
 } from "../data/mockData";
 import { auth, db, hasFirebaseConfig } from "../lib/firebase";
+import {
+  createDocument,
+  deleteDocumentById,
+  getDocument,
+  isFirebaseAvailable,
+  listDocuments,
+  updateDocument,
+  upsertDocument
+} from "./firebaseCrud";
 import { loadItem, saveItem } from "./storage";
 import { average, getAttendanceRate } from "../utils/helpers";
 
@@ -26,7 +34,7 @@ const COLLECTIONS = {
 const DATA_VERSION = 2;
 
 function isFirebaseReady() {
-  return Boolean(hasFirebaseConfig && auth && db);
+  return Boolean(hasFirebaseConfig && auth && db && isFirebaseAvailable());
 }
 
 function sortItems(items, field, direction = "asc") {
@@ -69,25 +77,18 @@ function toFirebaseErrorMessage(error) {
   }
 }
 
-function mapDoc(entry) {
-  return { id: entry.id, ...entry.data() };
-}
-
 async function getUserProfile(uid) {
-  const userRef = doc(db, COLLECTIONS.users, uid);
-  const snapshot = await getDoc(userRef);
+  const userProfile = await getDocument(COLLECTIONS.users, uid);
 
-  if (!snapshot.exists()) {
+  if (!userProfile) {
     throw new Error("Your account exists in Firebase Auth, but the user profile is missing in Firestore.");
   }
 
-  return { id: snapshot.id, ...snapshot.data() };
+  return userProfile;
 }
 
 async function getCollectionItems(name, orderField) {
-  const target = collection(db, name);
-  const snapshot = orderField ? await getDocs(query(target, orderBy(orderField, "asc"))) : await getDocs(target);
-  return snapshot.docs.map(mapDoc);
+  return listDocuments(name, orderField ? { orderField, orderDirection: "asc" } : {});
 }
 
 async function getLocalDataset() {
@@ -320,12 +321,13 @@ export async function registerUser(payload) {
   if (isFirebaseReady()) {
     try {
       const credentials = await createUserWithEmailAndPassword(auth, payload.email.trim(), payload.password);
-      const firebaseUser = { ...nextUser, id: credentials.user.uid };
-      await setDoc(doc(db, COLLECTIONS.users, credentials.user.uid), {
-        ...firebaseUser,
-        createdAt: serverTimestamp()
-      });
-      return firebaseUser;
+      const firebaseUser = {
+        ...nextUser,
+        id: credentials.user.uid
+      };
+      delete firebaseUser.password;
+      await createDocument(COLLECTIONS.users, firebaseUser, { id: credentials.user.uid });
+      return getUserProfile(credentials.user.uid);
     } catch (error) {
       throw new Error(toFirebaseErrorMessage(error));
     }
@@ -437,9 +439,7 @@ export async function getUserDirectory(user) {
 
 export async function saveReport(report) {
   if (isFirebaseReady()) {
-    const payload = { ...report, createdAt: serverTimestamp() };
-    const snapshot = await addDoc(collection(db, COLLECTIONS.reports), payload);
-    return { id: snapshot.id, ...payload };
+    return createDocument(COLLECTIONS.reports, report);
   }
 
   const reports = await loadItem("reports", mockReports);
@@ -450,9 +450,10 @@ export async function saveReport(report) {
 
 export async function saveRating(rating) {
   if (isFirebaseReady()) {
-    const payload = { ...rating, createdAt: rating.createdAt || new Date().toISOString() };
-    await addDoc(collection(db, COLLECTIONS.ratings), payload);
-    return payload;
+    return createDocument(COLLECTIONS.ratings, {
+      ...rating,
+      createdAt: rating.createdAt || new Date().toISOString()
+    });
   }
 
   const ratings = await loadItem("ratings", mockRatings);
@@ -463,9 +464,7 @@ export async function saveRating(rating) {
 
 export async function saveAttendance(record) {
   if (isFirebaseReady()) {
-    const payload = { ...record, createdAt: serverTimestamp() };
-    await addDoc(collection(db, COLLECTIONS.attendance), payload);
-    return payload;
+    return createDocument(COLLECTIONS.attendance, record);
   }
 
   const attendance = await loadItem("attendance", mockAttendance);
@@ -474,9 +473,9 @@ export async function saveAttendance(record) {
   return nextAttendance;
 }
 
-export async function updateReportFeedback(reportId, seniorLecturerFeedback, reviewStatus = "reviewed") {
+export async function updateReportFeedback(reportId, seniorLecturerFeedback, reviewStatus = "reviewed", user = null) {
   if (isFirebaseReady()) {
-    await updateDoc(doc(db, COLLECTIONS.reports, reportId), {
+    await updateDocument(COLLECTIONS.reports, reportId, {
       seniorLecturerFeedback,
       reviewStatus,
       reviewedAt: new Date().toISOString()
@@ -497,6 +496,10 @@ export async function updateReportFeedback(reportId, seniorLecturerFeedback, rev
     await saveItem("reports", nextReports);
   }
 
+  if (user) {
+    return getReportsForRole(user);
+  }
+
   return getReportsForRole({ id: "fmg-1", role: "fmg" });
 }
 
@@ -504,12 +507,9 @@ export async function saveClassAssignment(classItem) {
   if (isFirebaseReady()) {
     if (classItem.id) {
       const { id, ...payload } = classItem;
-      await setDoc(doc(db, COLLECTIONS.classes, id), payload, { merge: true });
+      await upsertDocument(COLLECTIONS.classes, id, payload);
     } else {
-      await addDoc(collection(db, COLLECTIONS.classes), {
-        ...classItem,
-        createdAt: serverTimestamp()
-      });
+      await createDocument(COLLECTIONS.classes, classItem);
     }
   } else {
     const classes = await loadItem("classes", mockClasses);
@@ -523,6 +523,53 @@ export async function saveClassAssignment(classItem) {
   }
 
   return getClassesForRole({ id: "fmg-1", role: "fmg" });
+}
+
+async function removeFromLocalCollection(storageKey, fallback, itemId) {
+  const items = await loadItem(storageKey, fallback);
+  const nextItems = items.filter((item) => item.id !== itemId);
+  await saveItem(storageKey, nextItems);
+  return nextItems;
+}
+
+export async function deleteReport(reportId, user = { id: "fmg-1", role: "fmg" }) {
+  if (isFirebaseReady()) {
+    await deleteDocumentById(COLLECTIONS.reports, reportId);
+  } else {
+    await removeFromLocalCollection("reports", mockReports, reportId);
+  }
+
+  return getReportsForRole(user);
+}
+
+export async function deleteRating(ratingId, user = { id: "fmg-1", role: "fmg" }) {
+  if (isFirebaseReady()) {
+    await deleteDocumentById(COLLECTIONS.ratings, ratingId);
+  } else {
+    await removeFromLocalCollection("ratings", mockRatings, ratingId);
+  }
+
+  return getRatingsForRole(user);
+}
+
+export async function deleteAttendance(attendanceId, user = { id: "fmg-1", role: "fmg" }) {
+  if (isFirebaseReady()) {
+    await deleteDocumentById(COLLECTIONS.attendance, attendanceId);
+  } else {
+    await removeFromLocalCollection("attendance", mockAttendance, attendanceId);
+  }
+
+  return getAttendanceForRole(user);
+}
+
+export async function deleteClassAssignment(classId, user = { id: "fmg-1", role: "fmg" }) {
+  if (isFirebaseReady()) {
+    await deleteDocumentById(COLLECTIONS.classes, classId);
+  } else {
+    await removeFromLocalCollection("classes", mockClasses, classId);
+  }
+
+  return getClassesForRole(user);
 }
 
 export async function signOutUser() {
