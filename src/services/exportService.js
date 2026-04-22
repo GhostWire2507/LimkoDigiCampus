@@ -4,26 +4,25 @@ import { createCsvContent } from "../utils/helpers";
 
 export async function exportReportsToCsv(reports) {
   const rows = reports.map((report) => ({
-    facultyName: report.facultyName,
-    className: report.className,
-    weekOfReporting: report.weekOfReporting,
-    dateOfLecture: report.dateOfLecture,
+    faculty: report.facultyName,
+    programme: report.programmeName,
+    className: report.classDisplayName,
     courseName: report.courseName,
-    courseCode: report.courseCode,
-    lecturerName: report.lecturerName,
-    actualStudentsPresent: report.actualStudentsPresent,
-    totalRegisteredStudents: report.totalRegisteredStudents,
-    venue: report.venue,
-    scheduledLectureTime: report.scheduledLectureTime,
-    topicTaught: report.topicTaught,
-    learningOutcomes: report.learningOutcomes,
-    lecturerRecommendations: report.lecturerRecommendations,
-    prlFeedback: report.prlFeedback || "",
-    reviewStatus: report.reviewStatus
+    lecturer: report.lecturerName,
+    week: report.weekLabel,
+    lectureDate: report.lectureDate,
+    attendancePresent: report.attendancePresent,
+    attendanceTotal: report.attendanceTotal,
+    attendanceRate: report.attendanceRate,
+    topic: report.topic,
+    outcomes: report.outcomes,
+    recommendations: report.recommendations,
+    seniorLecturerFeedback: report.seniorLecturerFeedback || "",
+    status: report.reviewStatus
   }));
 
   const content = createCsvContent(rows);
-  const path = `${FileSystem.cacheDirectory}limko-reports.csv`;
+  const path = `${FileSystem.cacheDirectory}limko-monitoring-reports.csv`;
 
   await FileSystem.writeAsStringAsync(path, content, {
     encoding: FileSystem.EncodingType.UTF8

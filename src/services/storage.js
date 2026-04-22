@@ -3,9 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const keys = {
   themeMode: "limko_theme_mode",
   currentUser: "limko_current_user",
+  dataVersion: "limko_data_version",
+  users: "limko_users",
+  faculties: "limko_faculties",
+  programmes: "limko_programmes",
+  classes: "limko_classes",
   reports: "limko_reports",
   ratings: "limko_ratings",
-  courses: "limko_courses",
   attendance: "limko_attendance"
 };
 

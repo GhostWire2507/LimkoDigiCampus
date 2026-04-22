@@ -1,3 +1,5 @@
+import { roleLabels } from "../constants/roles";
+
 export function filterByQuery(items, query, keys) {
   if (!query?.trim()) {
     return items;
@@ -18,10 +20,17 @@ export function getAttendanceRate(present, total) {
   return Math.round((present / total) * 100);
 }
 
+export function average(values) {
+  if (!values.length) {
+    return 0;
+  }
+
+  const total = values.reduce((sum, value) => sum + Number(value || 0), 0);
+  return Number((total / values.length).toFixed(1));
+}
+
 export function formatRole(role) {
-  if (role === "prl") return "Principal Lecturer";
-  if (role === "pl") return "Program Leader";
-  return role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
+  return roleLabels[role] || "";
 }
 
 export function createCsvContent(rows) {

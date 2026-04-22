@@ -1,38 +1,35 @@
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where
-} from "firebase/firestore";
-import { mockAttendance, mockCourses, mockRatings, mockReports, mockUsers } from "../data/mockData";
+  mockAttendance,
+  mockClasses,
+  mockFaculties,
+  mockProgrammes,
+  mockRatings,
+  mockReports,
+  mockUsers
+} from "../data/mockData";
 import { auth, db, hasFirebaseConfig } from "../lib/firebase";
 import { loadItem, saveItem } from "./storage";
+import { average, getAttendanceRate } from "../utils/helpers";
 
 const COLLECTIONS = {
   users: "users",
-  courses: "courses",
+  faculties: "faculties",
+  programmes: "programmes",
+  classes: "classes",
   reports: "reports",
   ratings: "ratings",
   attendance: "attendance"
 };
 
+const DATA_VERSION = 2;
+
 function isFirebaseReady() {
   return Boolean(hasFirebaseConfig && auth && db);
 }
 
-function mapDoc(entry) {
-  return { id: entry.id, ...entry.data() };
-}
-
-function sortItems(items, field, direction = "desc") {
+function sortItems(items, field, direction = "asc") {
   return [...items].sort((left, right) => {
     const leftValue = left?.[field] || "";
     const rightValue = right?.[field] || "";
@@ -41,59 +38,12 @@ function sortItems(items, field, direction = "desc") {
       return 0;
     }
 
-    if (direction === "asc") {
-      return leftValue > rightValue ? 1 : -1;
+    if (direction === "desc") {
+      return leftValue < rightValue ? 1 : -1;
     }
 
-    return leftValue < rightValue ? 1 : -1;
+    return leftValue > rightValue ? 1 : -1;
   });
-}
-
-async function getUserProfile(uid) {
-  try {
-    const userRef = doc(db, COLLECTIONS.users, uid);
-    const snapshot = await getDoc(userRef);
-
-    if (!snapshot.exists()) {
-      throw new Error("Your account exists in Firebase Auth, but the user profile is missing in Firestore.");
-    }
-
-    return { id: snapshot.id, ...snapshot.data() };
-  } catch (error) {
-    if (error?.code === "permission-denied") {
-      throw new Error("Firestore denied access to the user profile. Update your Firestore rules in Firebase Console and try again.");
-    }
-
-    throw error;
-  }
-}
-
-async function getCollectionItems(name, options = {}) {
-  try {
-    const constraints = [];
-
-    if (options.where) {
-      constraints.push(where(options.where.field, options.where.operator || "==", options.where.value));
-    }
-
-    if (options.orderBy) {
-      constraints.push(orderBy(options.orderBy.field, options.orderBy.direction || "desc"));
-    }
-
-    const target = collection(db, name);
-    const snapshot = constraints.length ? await getDocs(query(target, ...constraints)) : await getDocs(target);
-    return snapshot.docs.map(mapDoc);
-  } catch (error) {
-    if (error?.code === "permission-denied") {
-      throw new Error(`Firestore denied access to the ${name} collection. Update your Firestore rules in Firebase Console and try again.`);
-    }
-
-    throw error;
-  }
-}
-
-function withFallback(value, fallback) {
-  return value === undefined || value === null || value === "" ? fallback : value;
 }
 
 function toFirebaseErrorMessage(error) {
@@ -119,20 +69,204 @@ function toFirebaseErrorMessage(error) {
   }
 }
 
+function mapDoc(entry) {
+  return { id: entry.id, ...entry.data() };
+}
+
+async function getUserProfile(uid) {
+  const userRef = doc(db, COLLECTIONS.users, uid);
+  const snapshot = await getDoc(userRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("Your account exists in Firebase Auth, but the user profile is missing in Firestore.");
+  }
+
+  return { id: snapshot.id, ...snapshot.data() };
+}
+
+async function getCollectionItems(name, orderField) {
+  const target = collection(db, name);
+  const snapshot = orderField ? await getDocs(query(target, orderBy(orderField, "asc"))) : await getDocs(target);
+  return snapshot.docs.map(mapDoc);
+}
+
+async function getLocalDataset() {
+  const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
+    loadItem("users", mockUsers),
+    loadItem("faculties", mockFaculties),
+    loadItem("programmes", mockProgrammes),
+    loadItem("classes", mockClasses),
+    loadItem("reports", mockReports),
+    loadItem("ratings", mockRatings),
+    loadItem("attendance", mockAttendance)
+  ]);
+
+  return { users, faculties, programmes, classes, reports, ratings, attendance };
+}
+
+async function getDataset() {
+  if (!isFirebaseReady()) {
+    return getLocalDataset();
+  }
+
+  const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
+    getCollectionItems(COLLECTIONS.users),
+    getCollectionItems(COLLECTIONS.faculties, "name"),
+    getCollectionItems(COLLECTIONS.programmes, "name"),
+    getCollectionItems(COLLECTIONS.classes, "displayName"),
+    getCollectionItems(COLLECTIONS.reports),
+    getCollectionItems(COLLECTIONS.ratings),
+    getCollectionItems(COLLECTIONS.attendance)
+  ]);
+
+  return { users, faculties, programmes, classes, reports, ratings, attendance };
+}
+
+function canSeeFaculty(user, facultyId) {
+  if (!user) return false;
+  if (user.role === "fmg") return true;
+  if (user.role === "student" || user.role === "lecturer" || user.role === "prl" || user.role === "pl") {
+    return user.facultyId === facultyId;
+  }
+
+  return false;
+}
+
+function canSeeProgramme(user, programmeId) {
+  if (!user) return false;
+  if (user.role === "fmg") return true;
+  if (user.role === "student" || user.role === "lecturer" || user.role === "prl" || user.role === "pl") {
+    return (user.programmeIds || []).includes(programmeId);
+  }
+
+  return false;
+}
+
+function canSeeClass(user, classItem) {
+  if (!user || !classItem) return false;
+
+  if (user.role === "fmg") return true;
+  if (user.role === "student" || user.role === "lecturer") {
+    return (user.assignedClassIds || []).includes(classItem.id);
+  }
+
+  if (user.role === "prl") {
+    return classItem.prlId === user.id || (user.programmeIds || []).includes(classItem.programmeId);
+  }
+
+  if (user.role === "pl") {
+    return classItem.plId === user.id || (user.programmeIds || []).includes(classItem.programmeId);
+  }
+
+  return false;
+}
+
+function enrichClass(classItem, dataset) {
+  const faculty = dataset.faculties.find((item) => item.id === classItem.facultyId);
+  const programme = dataset.programmes.find((item) => item.id === classItem.programmeId);
+  const lecturer = dataset.users.find((item) => item.id === classItem.lecturerId);
+  const seniorLecturer = dataset.users.find((item) => item.id === classItem.prlId);
+  const programmeLeader = dataset.users.find((item) => item.id === classItem.plId);
+
+  return {
+    ...classItem,
+    facultyName: faculty?.name || "",
+    programmeName: programme?.name || "",
+    lecturerName: lecturer?.fullName || "Unassigned lecturer",
+    seniorLecturerName: seniorLecturer?.fullName || "Not assigned",
+    programmeLeaderName: programmeLeader?.fullName || "Not assigned"
+  };
+}
+
+function enrichReport(report, dataset) {
+  const classItem = dataset.classes.find((item) => item.id === report.classId);
+  const enrichedClass = classItem ? enrichClass(classItem, dataset) : null;
+
+  return {
+    ...report,
+    facultyName: enrichedClass?.facultyName || "",
+    programmeName: enrichedClass?.programmeName || "",
+    classDisplayName: enrichedClass?.displayName || report.classDisplayName || "",
+    courseName: enrichedClass?.courseName || report.courseName || "",
+    lecturerName: report.lecturerName || enrichedClass?.lecturerName || "",
+    attendanceRate: getAttendanceRate(report.attendancePresent, report.attendanceTotal)
+  };
+}
+
+function enrichAttendance(record, dataset) {
+  const classItem = dataset.classes.find((item) => item.id === record.classId);
+  const enrichedClass = classItem ? enrichClass(classItem, dataset) : null;
+
+  return {
+    ...record,
+    classDisplayName: enrichedClass?.displayName || "",
+    courseName: enrichedClass?.courseName || "",
+    facultyName: enrichedClass?.facultyName || "",
+    programmeName: enrichedClass?.programmeName || "",
+    attendanceRate: getAttendanceRate(record.totalPresent, classItem?.studentCount)
+  };
+}
+
+function enrichRating(rating, dataset) {
+  const classItem = dataset.classes.find((item) => item.id === rating.classId);
+  const student = dataset.users.find((item) => item.id === rating.studentId);
+  const lecturer = dataset.users.find((item) => item.id === rating.lecturerId);
+  const enrichedClass = classItem ? enrichClass(classItem, dataset) : null;
+
+  return {
+    ...rating,
+    studentName: student?.fullName || "Student",
+    lecturerName: lecturer?.fullName || "Lecturer",
+    classDisplayName: enrichedClass?.displayName || "",
+    courseName: enrichedClass?.courseName || ""
+  };
+}
+
+function buildMonitoringRows(user, dataset) {
+  const classes = dataset.classes.filter((item) => canSeeClass(user, item)).map((item) => enrichClass(item, dataset));
+  const reports = dataset.reports.filter((item) => classes.some((classItem) => classItem.id === item.classId));
+  const attendance = dataset.attendance.filter((item) => classes.some((classItem) => classItem.id === item.classId));
+  const ratings = dataset.ratings.filter((item) => classes.some((classItem) => classItem.id === item.classId));
+
+  return classes.map((classItem) => {
+    const classReports = reports.filter((report) => report.classId === classItem.id);
+    const classAttendance = attendance.filter((record) => record.classId === classItem.id);
+    const classRatings = ratings.filter((rating) => rating.classId === classItem.id);
+    const attendanceAverage = average(
+      classAttendance.map((record) => getAttendanceRate(record.totalPresent, classItem.studentCount))
+    );
+
+    return {
+      ...classItem,
+      reportsSubmitted: classReports.length,
+      attendanceAverage,
+      averageRating: average(classRatings.map((rating) => rating.rating)),
+      latestReportStatus: classReports[0]?.reviewStatus || "pending"
+    };
+  });
+}
+
 export async function bootstrapLocalData() {
   if (isFirebaseReady()) {
     return;
   }
 
-  const reports = await loadItem("reports", null);
-  const ratings = await loadItem("ratings", null);
-  const courses = await loadItem("courses", null);
-  const attendance = await loadItem("attendance", null);
+  const version = await loadItem("dataVersion", null);
 
-  if (!reports) await saveItem("reports", mockReports);
-  if (!ratings) await saveItem("ratings", mockRatings);
-  if (!courses) await saveItem("courses", mockCourses);
-  if (!attendance) await saveItem("attendance", mockAttendance);
+  if (version === DATA_VERSION) {
+    return;
+  }
+
+  await Promise.all([
+    saveItem("dataVersion", DATA_VERSION),
+    saveItem("users", mockUsers),
+    saveItem("faculties", mockFaculties),
+    saveItem("programmes", mockProgrammes),
+    saveItem("classes", mockClasses),
+    saveItem("reports", mockReports),
+    saveItem("ratings", mockRatings),
+    saveItem("attendance", mockAttendance)
+  ]);
 }
 
 export async function restoreUserSession() {
@@ -157,7 +291,8 @@ export async function loginUser(email, password) {
     }
   }
 
-  const matchedUser = mockUsers.find(
+  const users = await loadItem("users", mockUsers);
+  const matchedUser = users.find(
     (user) => user.email.toLowerCase() === email.toLowerCase() && user.password === password
   );
 
@@ -169,280 +304,225 @@ export async function loginUser(email, password) {
 }
 
 export async function registerUser(payload) {
+  const nextUser = {
+    id: `user-${Date.now()}`,
+    fullName: payload.fullName,
+    email: payload.email.trim().toLowerCase(),
+    password: payload.password,
+    role: payload.role,
+    facultyId: payload.facultyId || "fict",
+    facultyName: payload.facultyName || "Information & Communication Technology",
+    programmeIds: payload.programmeIds || [],
+    assignedClassIds: payload.assignedClassIds || [],
+    createdAt: new Date().toISOString()
+  };
+
   if (isFirebaseReady()) {
     try {
       const credentials = await createUserWithEmailAndPassword(auth, payload.email.trim(), payload.password);
-      const nextUser = {
-        id: credentials.user.uid,
-        fullName: payload.fullName,
-        email: payload.email.trim().toLowerCase(),
-        role: payload.role,
-        facultyName: payload.facultyName || "Faculty of Information Communication Technology",
-        projectId: "limkodigicampus",
-        projectNumber: "823990853810",
-        createdAt: new Date().toISOString()
-      };
-
+      const firebaseUser = { ...nextUser, id: credentials.user.uid };
       await setDoc(doc(db, COLLECTIONS.users, credentials.user.uid), {
-        ...nextUser,
+        ...firebaseUser,
         createdAt: serverTimestamp()
       });
-
-      return nextUser;
+      return firebaseUser;
     } catch (error) {
       throw new Error(toFirebaseErrorMessage(error));
     }
   }
 
-  return {
-    id: `user-${Date.now()}`,
-    facultyName: "Faculty of Information Communication Technology",
-    ...payload
-  };
+  const users = await loadItem("users", mockUsers);
+  await saveItem("users", [nextUser, ...users]);
+  return nextUser;
 }
 
-export async function getCoursesForRole(user) {
-  if (isFirebaseReady()) {
-    if (user.role === "lecturer") {
-      return sortItems(
-        await getCollectionItems(COLLECTIONS.courses, {
-          where: { field: "lecturerId", value: user.id }
-        }),
-        "courseName",
-        "asc"
-      );
-    }
+export async function getFacultiesForRole(user) {
+  const dataset = await getDataset();
+  return dataset.faculties
+    .filter((faculty) => canSeeFaculty(user, faculty.id))
+    .map((faculty) => ({
+      ...faculty,
+      programmeCount: dataset.programmes.filter((programme) => programme.facultyId === faculty.id).length,
+      classCount: dataset.classes.filter((classItem) => classItem.facultyId === faculty.id).length
+    }));
+}
 
-    if (user.role === "prl") {
-      return sortItems(
-        await getCollectionItems(COLLECTIONS.courses, {
-          where: { field: "principalLecturerId", value: user.id }
-        }),
-        "courseName",
-        "asc"
-      );
-    }
+export async function getProgrammesForRole(user) {
+  const dataset = await getDataset();
 
-    return getCollectionItems(COLLECTIONS.courses, {
-      orderBy: { field: "courseName", direction: "asc" }
+  return dataset.programmes
+    .filter((programme) => canSeeProgramme(user, programme.id) || canSeeFaculty(user, programme.facultyId))
+    .map((programme) => {
+      const faculty = dataset.faculties.find((item) => item.id === programme.facultyId);
+      const programmeClasses = dataset.classes.filter((classItem) => classItem.programmeId === programme.id);
+      return {
+        ...programme,
+        facultyName: faculty?.name || "",
+        classCount: programmeClasses.length
+      };
     });
-  }
+}
 
-  const storedCourses = await loadItem("courses", mockCourses);
-
-  if (user.role === "lecturer") {
-    return storedCourses.filter((course) => course.lecturerId === user.id);
-  }
-
-  if (user.role === "prl") {
-    return storedCourses.filter((course) => course.principalLecturerId === user.id);
-  }
-
-  return storedCourses;
+export async function getClassesForRole(user) {
+  const dataset = await getDataset();
+  return sortItems(
+    dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => enrichClass(classItem, dataset)),
+    "displayName",
+    "asc"
+  );
 }
 
 export async function getReportsForRole(user) {
-  if (isFirebaseReady()) {
-    if (user.role === "lecturer") {
-      return sortItems(
-        await getCollectionItems(COLLECTIONS.reports, {
-          where: { field: "lecturerId", value: user.id }
-        }),
-        "submittedAt",
-        "desc"
-      );
-    }
+  const dataset = await getDataset();
+  const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
 
-    return getCollectionItems(COLLECTIONS.reports, {
-      orderBy: { field: "submittedAt", direction: "desc" }
-    });
-  }
-
-  const storedReports = await loadItem("reports", mockReports);
-
-  if (user.role === "lecturer") {
-    return storedReports.filter((report) => report.lecturerId === user.id);
-  }
-
-  return storedReports;
+  return sortItems(
+    dataset.reports
+      .filter((report) => visibleClassIds.includes(report.classId))
+      .map((report) => enrichReport(report, dataset)),
+    "submittedAt",
+    "desc"
+  );
 }
 
 export async function getRatingsForRole(user) {
-  if (isFirebaseReady()) {
-    if (user.role === "student") {
-      return sortItems(
-        await getCollectionItems(COLLECTIONS.ratings, {
-          where: { field: "studentId", value: user.id }
-        }),
-        "createdAt",
-        "desc"
-      );
-    }
+  const dataset = await getDataset();
+  const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
 
-    if (user.role === "lecturer") {
-      return sortItems(
-        await getCollectionItems(COLLECTIONS.ratings, {
-          where: { field: "lecturerId", value: user.id }
-        }),
-        "createdAt",
-        "desc"
-      );
-    }
+  return sortItems(
+    dataset.ratings
+      .filter((rating) => {
+        if (user.role === "student") {
+          return rating.studentId === user.id;
+        }
 
-    return getCollectionItems(COLLECTIONS.ratings, {
-      orderBy: { field: "createdAt", direction: "desc" }
-    });
-  }
-
-  const storedRatings = await loadItem("ratings", mockRatings);
-
-  if (user.role === "student") {
-    return storedRatings.filter((rating) => rating.studentId === user.id);
-  }
-
-  if (user.role === "lecturer") {
-    return storedRatings.filter((rating) => rating.lecturerId === user.id);
-  }
-
-  return storedRatings;
+        return visibleClassIds.includes(rating.classId);
+      })
+      .map((rating) => enrichRating(rating, dataset)),
+    "createdAt",
+    "desc"
+  );
 }
 
 export async function getAttendanceForRole(user) {
-  if (isFirebaseReady()) {
-    if (user.role === "lecturer") {
-      return sortItems(
-        await getCollectionItems(COLLECTIONS.attendance, {
-          where: { field: "lecturerId", value: user.id }
-        }),
-        "lectureDate",
-        "desc"
-      );
+  const dataset = await getDataset();
+  const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
+
+  return sortItems(
+    dataset.attendance
+      .filter((record) => visibleClassIds.includes(record.classId))
+      .map((record) => enrichAttendance(record, dataset)),
+    "lectureDate",
+    "desc"
+  );
+}
+
+export async function getMonitoringForRole(user) {
+  const dataset = await getDataset();
+  return sortItems(buildMonitoringRows(user, dataset), "attendanceAverage", "desc");
+}
+
+export async function getUserDirectory(user) {
+  const dataset = await getDataset();
+
+  return dataset.users.filter((entry) => {
+    if (user.role === "fmg") return true;
+    if (user.role === "pl" || user.role === "prl") {
+      return entry.facultyId === user.facultyId;
     }
 
-    return getCollectionItems(COLLECTIONS.attendance, {
-      orderBy: { field: "lectureDate", direction: "desc" }
-    });
-  }
-
-  const storedAttendance = await loadItem("attendance", mockAttendance);
-
-  if (user.role === "lecturer") {
-    return storedAttendance.filter((item) => item.lecturerId === user.id);
-  }
-
-  return storedAttendance;
+    return entry.id === user.id;
+  });
 }
 
 export async function saveReport(report) {
   if (isFirebaseReady()) {
-    const payload = {
-      ...report,
-      submittedAt: report.submittedAt || new Date().toISOString(),
-      createdAt: serverTimestamp()
-    };
+    const payload = { ...report, createdAt: serverTimestamp() };
     const snapshot = await addDoc(collection(db, COLLECTIONS.reports), payload);
     return { id: snapshot.id, ...payload };
   }
 
-  const storedReports = await loadItem("reports", mockReports);
-  const nextReports = [{ id: `report-${Date.now()}`, ...report }, ...storedReports];
+  const reports = await loadItem("reports", mockReports);
+  const nextReports = [{ id: `report-${Date.now()}`, ...report }, ...reports];
   await saveItem("reports", nextReports);
   return nextReports;
 }
 
 export async function saveRating(rating) {
   if (isFirebaseReady()) {
-    const payload = {
-      ...rating,
-      createdAt: rating.createdAt || new Date().toISOString()
-    };
+    const payload = { ...rating, createdAt: rating.createdAt || new Date().toISOString() };
     await addDoc(collection(db, COLLECTIONS.ratings), payload);
-    return getRatingsForRole({ id: rating.studentId, role: "student" });
+    return payload;
   }
 
-  const storedRatings = await loadItem("ratings", mockRatings);
-  const nextRatings = [{ id: `rating-${Date.now()}`, ...rating }, ...storedRatings];
+  const ratings = await loadItem("ratings", mockRatings);
+  const nextRatings = [{ id: `rating-${Date.now()}`, ...rating }, ...ratings];
   await saveItem("ratings", nextRatings);
   return nextRatings;
 }
 
 export async function saveAttendance(record) {
   if (isFirebaseReady()) {
-    const payload = {
-      ...record,
-      createdAt: serverTimestamp()
-    };
+    const payload = { ...record, createdAt: serverTimestamp() };
     await addDoc(collection(db, COLLECTIONS.attendance), payload);
-    return getAttendanceForRole({ id: record.lecturerId, role: "lecturer" });
+    return payload;
   }
 
-  const storedAttendance = await loadItem("attendance", mockAttendance);
-  const nextAttendance = [{ id: `attendance-${Date.now()}`, ...record }, ...storedAttendance];
+  const attendance = await loadItem("attendance", mockAttendance);
+  const nextAttendance = [{ id: `attendance-${Date.now()}`, ...record }, ...attendance];
   await saveItem("attendance", nextAttendance);
   return nextAttendance;
 }
 
-export async function updateReportFeedback(reportId, prlFeedback, reviewStatus = "reviewed") {
+export async function updateReportFeedback(reportId, seniorLecturerFeedback, reviewStatus = "reviewed") {
   if (isFirebaseReady()) {
     await updateDoc(doc(db, COLLECTIONS.reports, reportId), {
-      prlFeedback,
+      seniorLecturerFeedback,
       reviewStatus,
       reviewedAt: new Date().toISOString()
     });
+  } else {
+    const reports = await loadItem("reports", mockReports);
+    const nextReports = reports.map((report) =>
+      report.id === reportId
+        ? {
+            ...report,
+            seniorLecturerFeedback,
+            reviewStatus,
+            reviewedAt: new Date().toISOString()
+          }
+        : report
+    );
 
-    return getCollectionItems(COLLECTIONS.reports, {
-      orderBy: { field: "submittedAt", direction: "desc" }
-    });
+    await saveItem("reports", nextReports);
   }
 
-  const storedReports = await loadItem("reports", mockReports);
-  const nextReports = storedReports.map((report) =>
-    report.id === reportId
-      ? {
-          ...report,
-          prlFeedback,
-          reviewStatus,
-          reviewedAt: new Date().toISOString()
-        }
-      : report
-  );
-
-  await saveItem("reports", nextReports);
-  return nextReports;
+  return getReportsForRole({ id: "fmg-1", role: "fmg" });
 }
 
-export async function saveCourse(course) {
+export async function saveClassAssignment(classItem) {
   if (isFirebaseReady()) {
-    if (course.id) {
-      const { id, ...payload } = course;
-      await setDoc(doc(db, COLLECTIONS.courses, id), payload, { merge: true });
-      return getCollectionItems(COLLECTIONS.courses, {
-        orderBy: { field: "courseName", direction: "asc" }
+    if (classItem.id) {
+      const { id, ...payload } = classItem;
+      await setDoc(doc(db, COLLECTIONS.classes, id), payload, { merge: true });
+    } else {
+      await addDoc(collection(db, COLLECTIONS.classes), {
+        ...classItem,
+        createdAt: serverTimestamp()
       });
     }
-
-    await addDoc(collection(db, COLLECTIONS.courses), {
-      ...course,
-      createdAt: serverTimestamp()
-    });
-
-    return getCollectionItems(COLLECTIONS.courses, {
-      orderBy: { field: "courseName", direction: "asc" }
-    });
-  }
-
-  const storedCourses = await loadItem("courses", mockCourses);
-  const index = storedCourses.findIndex((item) => item.id === course.id);
-  let nextCourses = storedCourses;
-
-  if (index >= 0) {
-    nextCourses = storedCourses.map((item) => (item.id === course.id ? { ...item, ...course } : item));
   } else {
-    nextCourses = [{ id: `course-${Date.now()}`, ...course }, ...storedCourses];
+    const classes = await loadItem("classes", mockClasses);
+    const index = classes.findIndex((item) => item.id === classItem.id);
+    const nextClasses =
+      index >= 0
+        ? classes.map((item) => (item.id === classItem.id ? { ...item, ...classItem } : item))
+        : [{ id: classItem.id || `class-${Date.now()}`, ...classItem }, ...classes];
+
+    await saveItem("classes", nextClasses);
   }
 
-  await saveItem("courses", nextCourses);
-  return nextCourses;
+  return getClassesForRole({ id: "fmg-1", role: "fmg" });
 }
 
 export async function signOutUser() {
@@ -451,25 +531,24 @@ export async function signOutUser() {
   }
 }
 
-export function buildReportFromCourse(course, values, user) {
+export function buildReportFromClass(classItem, values, user) {
   return {
-    facultyName: values.facultyName || course.facultyName,
-    className: values.className || course.className,
-    weekOfReporting: values.weekOfReporting,
-    dateOfLecture: values.dateOfLecture,
-    courseId: course.id,
-    courseName: values.courseName || course.courseName,
-    courseCode: values.courseCode || course.courseCode,
+    classId: classItem.id,
+    facultyId: classItem.facultyId,
+    programmeId: classItem.programmeId,
     lecturerId: user.id,
     lecturerName: user.fullName,
-    actualStudentsPresent: Number(values.actualStudentsPresent),
-    totalRegisteredStudents: Number(withFallback(values.totalRegisteredStudents, course.totalRegisteredStudents)),
-    venue: values.venue || course.venue,
-    scheduledLectureTime: values.scheduledLectureTime || course.scheduledLectureTime,
-    topicTaught: values.topicTaught,
-    learningOutcomes: values.learningOutcomes,
-    lecturerRecommendations: values.lecturerRecommendations,
+    classDisplayName: classItem.displayName,
+    courseName: classItem.courseName,
+    lectureDate: values.lectureDate,
+    weekLabel: values.weekLabel,
+    attendancePresent: Number(values.attendancePresent),
+    attendanceTotal: Number(values.attendanceTotal || classItem.studentCount),
+    topic: values.topic,
+    outcomes: values.outcomes,
+    recommendations: values.recommendations,
     reviewStatus: "submitted",
+    seniorLecturerFeedback: "",
     submittedAt: new Date().toISOString()
   };
 }

@@ -1,10 +1,1 @@
-import { ScreenWrapper } from "../src/components/ScreenWrapper";
-import { ProfileScreen } from "../src/features/roleScreens";
-
-export default function ProfileRoute() {
-  return (
-    <ScreenWrapper>
-      <ProfileScreen />
-    </ScreenWrapper>
-  );
-}
+export { default } from "../src/screens/app/profile";

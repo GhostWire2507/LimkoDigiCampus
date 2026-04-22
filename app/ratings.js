@@ -1,10 +1,1 @@
-import { ScreenWrapper } from "../src/components/ScreenWrapper";
-import { RatingsScreen } from "../src/features/roleScreens";
-
-export default function RatingsRoute() {
-  return (
-    <ScreenWrapper>
-      <RatingsScreen />
-    </ScreenWrapper>
-  );
-}
+export { default } from "../src/screens/app/ratings";
