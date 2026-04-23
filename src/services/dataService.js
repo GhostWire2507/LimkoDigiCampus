@@ -12,6 +12,7 @@ import { auth, db, hasFirebaseConfig } from "../lib/firebase";
 import {
   createDocument,
   deleteDocumentById,
+  findFirstDocument,
   getDocument,
   isFirebaseAvailable,
   listDocuments,
@@ -80,11 +81,19 @@ function toFirebaseErrorMessage(error) {
 async function getUserProfile(uid) {
   const userProfile = await getDocument(COLLECTIONS.users, uid);
 
-  if (!userProfile) {
-    throw new Error("Your account exists in Firebase Auth, but the user profile is missing in Firestore.");
+  if (userProfile) {
+    return userProfile;
   }
 
-  return userProfile;
+  const emailMatchedProfile = auth?.currentUser?.email
+    ? await findFirstDocument(COLLECTIONS.users, "email", auth.currentUser.email.toLowerCase())
+    : null;
+
+  if (emailMatchedProfile) {
+    return emailMatchedProfile;
+  }
+
+  throw new Error("Your account exists in Firebase Auth, but the user profile is missing in Firestore.");
 }
 
 async function getCollectionItems(name, orderField) {

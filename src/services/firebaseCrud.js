@@ -5,11 +5,13 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from "firebase/firestore";
 import { db, hasFirebaseConfig } from "../lib/firebase";
 
@@ -62,6 +64,12 @@ export async function listDocuments(collectionName, options = {}) {
 export async function getDocument(collectionName, id) {
   const snapshot = await getDoc(doc(db, collectionName, id));
   return snapshot.exists() ? normalizeDoc(snapshot) : null;
+}
+
+export async function findFirstDocument(collectionName, field, value) {
+  const snapshot = await getDocs(query(collection(db, collectionName), where(field, "==", value), limit(1)));
+  const [firstDoc] = snapshot.docs;
+  return firstDoc ? normalizeDoc(firstDoc) : null;
 }
 
 export async function createDocument(collectionName, payload, options = {}) {

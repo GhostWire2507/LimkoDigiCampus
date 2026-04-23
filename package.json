@@ -8,7 +8,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "seed:firebase": "node scripts/seed-firebase.mjs",
+    "seed:firebase:auth": "node scripts/seed-firebase.mjs --with-auth"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
