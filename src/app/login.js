@@ -30,7 +30,7 @@ export default function LoginScreen() {
         <View style={{ marginBottom: 20 }}>
           <AppText variant="title">LUCT Academic System</AppText>
           <AppText variant="caption" style={{ marginTop: 8 }}>
-            Lecture reporting, attendance tracking, and programme oversight in one academic workspace.
+            example acounts: Student - student@limko.com, Lecturer - lecturer@limko.com, PRL - prl@limko.com, PL - khopotso.molati@limko.com, FMG - fmg@limko.com.
           </AppText>
         </View>
 
