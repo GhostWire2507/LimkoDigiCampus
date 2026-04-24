@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { ScrollView } from "react-native";
 import { AppButton } from "../components/AppButton";
 import { AppHeader } from "../components/AppHeader";
@@ -9,8 +10,14 @@ import { useTheme } from "../contexts/ThemeContext";
 import { formatRole } from "../utils/helpers";
 
 function ProfileScreen() {
+  const router = useRouter();
   const { user, signOut } = useAuth();
   const { mode, toggleTheme } = useTheme();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace("/login");
+  };
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -33,7 +40,7 @@ function ProfileScreen() {
         <AppButton title="Toggle Theme" variant="secondary" onPress={toggleTheme} style={{ marginTop: 14 }} />
       </Card>
 
-      <AppButton title="Logout" onPress={signOut} />
+      <AppButton title="Logout" onPress={handleLogout} />
     </ScrollView>
   );
 }

@@ -32,7 +32,7 @@ const COLLECTIONS = {
   attendance: "attendance"
 };
 
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 
 function isFirebaseReady() {
   return Boolean(hasFirebaseConfig && auth && db && isFirebaseAvailable());
