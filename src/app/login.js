@@ -14,7 +14,6 @@ export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
   const passwordRef = useRef(null);
-  const [activeField, setActiveField] = useState(null);
   const [form, setForm] = useState({
     email: "",
     password: ""
@@ -56,7 +55,7 @@ export default function LoginScreen() {
             </AppText>
           </View>
 
-          <Card>
+          <Card disableBlur>
             <TextField
               label="Email"
               value={form.email}
@@ -69,9 +68,6 @@ export default function LoginScreen() {
               returnKeyType="next"
               blurOnSubmit={false}
               onSubmitEditing={() => passwordRef.current?.focus()}
-              isFocused={activeField === "email"}
-              onFocus={() => setActiveField("email")}
-              onBlur={() => setActiveField((current) => (current === "email" ? null : current))}
             />
             <TextField
               ref={passwordRef}
@@ -85,9 +81,6 @@ export default function LoginScreen() {
               textContentType="password"
               returnKeyType="done"
               onSubmitEditing={handleLogin}
-              isFocused={activeField === "password"}
-              onFocus={() => setActiveField("password")}
-              onBlur={() => setActiveField((current) => (current === "password" ? null : current))}
             />
             <AppButton title="Login" onPress={handleLogin} />
             <AppText variant="caption" style={{ marginTop: 16 }}>
