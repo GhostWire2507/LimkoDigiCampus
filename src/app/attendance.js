@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { deleteAttendance, getAttendanceForRole, getClassesForRole, saveAttendance } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
+// Lets lecturers capture attendance while leadership can still review the history.
 function AttendanceScreen() {
   const { user } = useAuth();
   const [classes] = useLoad(() => getClassesForRole(user), user);
@@ -30,6 +31,7 @@ function AttendanceScreen() {
     value: classItem.id
   }));
 
+  // Saves one attendance record for the selected class and date.
   const submitAttendance = async () => {
     if (!selectedClassId || !totalPresent) {
       Alert.alert("Missing values", "Choose a class and enter the number of students present.");

@@ -10,6 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getProgrammesForRole, getUserDirectory, saveClassAssignment } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
+// Used by leadership roles to create the class-to-programme teaching structure.
 function CourseFormScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -52,6 +53,7 @@ function CourseFormScreen() {
   const selectedProgramme = programmes.find((programme) => programme.id === values.programmeId);
   const update = (key, value) => setValues((current) => ({ ...current, [key]: value }));
 
+  // Saves a single class mapping that links programme, lecturer, PRL, and schedule data.
   const handleSave = async () => {
     if (!selectedProgramme) {
       Alert.alert("Programme missing", "Choose a programme before saving the class mapping.");

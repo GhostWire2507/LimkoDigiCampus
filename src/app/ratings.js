@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { deleteRating, getClassesForRole, getRatingsForRole, saveRating } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
+// Students submit lecturer feedback here, while leadership can review or remove entries.
 function RatingsScreen() {
   const { user } = useAuth();
   const [ratings, setRatings] = useLoad(() => getRatingsForRole(user), user);
@@ -30,6 +31,7 @@ function RatingsScreen() {
     value: classItem.id
   }));
 
+  // Saves a new rating tied to the selected class and lecturer.
   const submitRating = async () => {
     if (user.role !== "student") {
       return;

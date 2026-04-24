@@ -4,6 +4,7 @@ import { AppButton } from "./AppButton";
 import { AppText } from "./AppText";
 import { formatRole } from "../utils/helpers";
 
+// Reusable screen header with an optional back button.
 export function AppHeader({ title, subtitle, showBack = false, backHref = "/home", backLabel = "Back" }) {
   const router = useRouter();
 
@@ -38,6 +39,7 @@ export function AppHeader({ title, subtitle, showBack = false, backHref = "/home
   );
 }
 
+// Small helper for the home screen greeting.
 export function GreetingHeader({ user }) {
   if (!user) {
     return <AppHeader title="Hello" subtitle="Loading profile" />;

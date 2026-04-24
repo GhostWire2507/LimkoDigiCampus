@@ -23,6 +23,7 @@ import {
 import { loadItem, saveItem } from "./storage";
 import { average, getAttendanceRate } from "../utils/helpers";
 
+// Collection names are kept here so reads and writes stay consistent.
 const COLLECTIONS = {
   users: "users",
   faculties: "faculties",
@@ -36,14 +37,17 @@ const COLLECTIONS = {
 const DATA_VERSION = 5;
 const dataCache = new Map();
 
+// Separates cached local data from cached Firebase data.
 function getModeCacheKey() {
   return isFirebaseReady() ? "firebase" : "local";
 }
 
+// Builds a cache key that is unique per screen/data scope and user.
 function getScopedCacheKey(scope, user = null) {
   return `${getModeCacheKey()}:${scope}:${user?.role || "guest"}:${user?.id || "anonymous"}`;
 }
 
+// Reuses in-flight loads and completed results so screens feel faster.
 function readThroughCache(key, loader) {
   const cached = dataCache.get(key);
 
@@ -69,18 +73,22 @@ function readThroughCache(key, loader) {
   return promise;
 }
 
+// Clears all cached data after mutations, logout, or dataset refreshes.
 export function clearDataCaches() {
   dataCache.clear();
 }
 
+// Lets screens paint immediately from cached values while fresh data loads.
 export function peekCachedData(scope, user = null, fallback = []) {
   return dataCache.get(getScopedCacheKey(scope, user))?.value || fallback;
 }
 
+// Firebase mode only works when config, auth, and Firestore are all ready.
 function isFirebaseReady() {
   return Boolean(hasFirebaseConfig && auth && db && isFirebaseAvailable());
 }
 
+// Shared sorter used by multiple list screens.
 function sortItems(items, field, direction = "asc") {
   return [...items].sort((left, right) => {
     const leftValue = left?.[field] || "";
@@ -98,6 +106,7 @@ function sortItems(items, field, direction = "asc") {
   });
 }
 
+// Converts Firebase auth error codes into clearer messages for app users.
 function toFirebaseErrorMessage(error) {
   switch (error?.code) {
     case "auth/invalid-api-key":
@@ -121,6 +130,7 @@ function toFirebaseErrorMessage(error) {
   }
 }
 
+// Loads a Firestore user profile, falling back to email matching when ids differ.
 async function getUserProfile(uid) {
   const userProfile = await getDocument(COLLECTIONS.users, uid);
 
@@ -139,10 +149,12 @@ async function getUserProfile(uid) {
   throw new Error("Your account exists in Firebase Auth, but the user profile is missing in Firestore.");
 }
 
+// Reads a collection with optional ordering.
 async function getCollectionItems(name, orderField) {
   return listDocuments(name, orderField ? { orderField, orderDirection: "asc" } : {});
 }
 
+// Loads the demo dataset from AsyncStorage or the bundled mock data.
 async function getLocalDataset() {
   return readThroughCache("local:dataset", async () => {
     const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
@@ -159,6 +171,7 @@ async function getLocalDataset() {
   });
 }
 
+// Switches between Firebase data and local demo data using the same shape.
 async function getDataset() {
   if (!isFirebaseReady()) {
     return getLocalDataset();
@@ -179,6 +192,7 @@ async function getDataset() {
   });
 }
 
+// Faculty visibility is based on the current user's role and faculty scope.
 function canSeeFaculty(user, facultyId) {
   if (!user) return false;
   if (user.role === "fmg") return true;
@@ -189,6 +203,7 @@ function canSeeFaculty(user, facultyId) {
   return false;
 }
 
+// Programme visibility follows the same role-based rules as faculties.
 function canSeeProgramme(user, programmeId) {
   if (!user) return false;
   if (user.role === "fmg") return true;
@@ -199,6 +214,7 @@ function canSeeProgramme(user, programmeId) {
   return false;
 }
 
+// Class visibility is the main permission rule used across classes, reports, and monitoring.
 function canSeeClass(user, classItem) {
   if (!user || !classItem) return false;
 
@@ -218,6 +234,7 @@ function canSeeClass(user, classItem) {
   return false;
 }
 
+// Adds names and related people to a raw class record for easier rendering.
 function enrichClass(classItem, dataset) {
   const faculty = dataset.faculties.find((item) => item.id === classItem.facultyId);
   const programme = dataset.programmes.find((item) => item.id === classItem.programmeId);
@@ -235,6 +252,7 @@ function enrichClass(classItem, dataset) {
   };
 }
 
+// Adds class and attendance details to a raw report.
 function enrichReport(report, dataset) {
   const classItem = dataset.classes.find((item) => item.id === report.classId);
   const enrichedClass = classItem ? enrichClass(classItem, dataset) : null;
@@ -250,6 +268,7 @@ function enrichReport(report, dataset) {
   };
 }
 
+// Enriches attendance rows with the class details users expect to see in the UI.
 function enrichAttendance(record, dataset) {
   const classItem = dataset.classes.find((item) => item.id === record.classId);
   const enrichedClass = classItem ? enrichClass(classItem, dataset) : null;
@@ -264,6 +283,7 @@ function enrichAttendance(record, dataset) {
   };
 }
 
+// Enriches student ratings with related user and class names.
 function enrichRating(rating, dataset) {
   const classItem = dataset.classes.find((item) => item.id === rating.classId);
   const student = dataset.users.find((item) => item.id === rating.studentId);
@@ -279,6 +299,7 @@ function enrichRating(rating, dataset) {
   };
 }
 
+// Combines several datasets into the summary rows shown on the monitoring screen.
 function buildMonitoringRows(user, dataset) {
   const classes = dataset.classes.filter((item) => canSeeClass(user, item)).map((item) => enrichClass(item, dataset));
   const reports = dataset.reports.filter((item) => classes.some((classItem) => classItem.id === item.classId));

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { View, TextInput } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Shared inline search input used by list screens.
 export function SearchBar({ value, onChangeText, placeholder = "Search..." }) {
   const { theme } = useTheme();
 

@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { buildReportFromClass, getClassesForRole, saveReport } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
+// Walks lecturers through a short multi-step lecture report submission flow.
 function ReportFormScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -44,6 +45,7 @@ function ReportFormScreen() {
 
   const update = (key, value) => setValues((current) => ({ ...current, [key]: value }));
 
+  // Builds the final report payload from the selected class and the entered form data.
   const submit = async () => {
     if (!selectedClass) {
       Alert.alert("No class selected", "Choose a class before submitting.");

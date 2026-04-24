@@ -1,5 +1,6 @@
 import { roleLabels } from "../constants/roles";
 
+// Basic text search helper used by list screens.
 export function filterByQuery(items, query, keys) {
   if (!query?.trim()) {
     return items;
@@ -12,6 +13,7 @@ export function filterByQuery(items, query, keys) {
   );
 }
 
+// Converts attendance counts into a rounded percentage.
 export function getAttendanceRate(present, total) {
   if (!total) {
     return 0;
@@ -20,6 +22,7 @@ export function getAttendanceRate(present, total) {
   return Math.round((present / total) * 100);
 }
 
+// Averages a list of numeric values and keeps one decimal place for display.
 export function average(values) {
   if (!values.length) {
     return 0;
@@ -29,10 +32,12 @@ export function average(values) {
   return Number((total / values.length).toFixed(1));
 }
 
+// Turns a stored role key into the matching label.
 export function formatRole(role) {
   return roleLabels[role] || "";
 }
 
+// Builds CSV text from an array of plain objects for report export.
 export function createCsvContent(rows) {
   if (!rows.length) {
     return "";

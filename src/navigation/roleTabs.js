@@ -1,3 +1,4 @@
+// Defines which bottom tabs each role should see after logging in.
 export const roleTabs = {
   student: [
     { label: "Home", href: "/home", icon: "home-outline" },

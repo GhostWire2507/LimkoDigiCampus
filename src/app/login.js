@@ -9,6 +9,7 @@ import { ScreenWrapper } from "../components/ScreenWrapper";
 import { useAuth } from "../contexts/AuthContext";
 import { hasFirebaseConfig } from "../lib/firebase";
 
+// Handles sign-in and keeps the login keyboard flow stable on mobile.
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
@@ -19,6 +20,7 @@ export default function LoginScreen() {
     password: ""
   });
 
+  // Merge updates so typing in one field never clears the other one.
   const updateField = (key, value) => {
     setForm((current) => ({
       ...current,

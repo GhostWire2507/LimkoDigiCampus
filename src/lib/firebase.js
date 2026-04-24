@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// Central Firebase project details used by both the app and seed scripts.
 export const firebaseProject = {
   name: "LimkoDigiCampus",
   projectId: "limkodigicampus",
@@ -26,9 +27,11 @@ let authInstance = null;
 let dbInstance = null;
 
 if (hasFirebaseConfig) {
+  // Reuse the existing app instance during hot reloads instead of creating duplicates.
   appInstance = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
   try {
+    // React Native auth needs AsyncStorage-backed persistence to survive app restarts.
     authInstance = initializeAuth(appInstance, {
       persistence: getReactNativePersistence(AsyncStorage)
     });

@@ -7,6 +7,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { AppText } from "./AppText";
 import { Card } from "./Card";
 
+// Renders the role-specific bottom navigation for signed-in users.
 export function AppTabBar() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -23,6 +24,7 @@ export function AppTabBar() {
     <Card style={{ marginBottom: 0 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         {tabs.map((tab) => {
+          // Highlight the tab that matches the current route.
           const active = pathname === tab.href;
 
           return (

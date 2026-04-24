@@ -1,3 +1,4 @@
+// Lightweight SHA-256 implementation used for hashing local/demo passwords.
 function sha256(ascii) {
   const rightRotate = (value, amount) => (value >>> amount) | (value << (32 - amount));
   const mathPow = Math.pow;
@@ -84,14 +85,17 @@ function sha256(ascii) {
   return result;
 }
 
+// Adds a simple app-specific prefix before hashing user passwords.
 export function hashPassword(password) {
   return sha256(`limko::${String(password || "").trim()}`);
 }
 
+// Lets the app quickly tell whether a stored value already looks hashed.
 export function isPasswordHash(value) {
   return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
 }
 
+// Compares a plain password with the stored hash.
 export function verifyPassword(password, hash) {
   if (!hash) {
     return false;

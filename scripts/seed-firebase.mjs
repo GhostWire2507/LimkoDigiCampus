@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { initializeApp } from "firebase/app";
 import { doc, getFirestore, writeBatch } from "firebase/firestore";
 
+// Resolve project-relative paths once so the script can read .env and mock data reliably.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
@@ -23,6 +24,7 @@ const COLLECTIONS = {
 const DRY_RUN = process.argv.includes("--dry-run");
 const WITH_AUTH = process.argv.includes("--with-auth");
 
+// Loads local .env values without needing an extra dependency in the seed script.
 function loadEnvFile() {
   if (!existsSync(envPath)) {
     return;
@@ -56,6 +58,7 @@ function loadEnvFile() {
   }
 }
 
+// Fails early when required Firebase values are missing.
 function requireEnv(name) {
   const value = process.env[name];
 
@@ -66,6 +69,7 @@ function requireEnv(name) {
   return value;
 }
 
+// Evaluates the mock data module so the script can reuse the same records as the app.
 function loadMockData() {
   const source = readFileSync(mockDataPath, "utf8");
   const exportNames = [...source.matchAll(/export const (\w+)\s*=/g)].map((match) => match[1]);
@@ -79,6 +83,7 @@ function loadMockData() {
   return factory();
 }
 
+// Defines the Firestore collections that are seeded from the mock data file.
 function getSeedPlan(mockData) {
   return [
     [COLLECTIONS.faculties, mockData.mockFaculties],
@@ -91,6 +96,7 @@ function getSeedPlan(mockData) {
   ];
 }
 
+// Writes records in chunks so the script stays within Firestore batch limits.
 async function seedCollection(db, collectionName, records) {
   if (!records.length) {
     return 0;
@@ -117,10 +123,12 @@ async function seedCollection(db, collectionName, records) {
   return committed;
 }
 
+// Auth seeding uses a simpler list because Firestore user docs do not store raw passwords anymore.
 function getAuthSeedUsers(mockUsers) {
   return mockUsers.filter((user) => user?.email && user?.password);
 }
 
+// Creates one Firebase Auth email/password account from a seed record.
 async function createAuthUser(apiKey, user) {
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
     method: "POST",
@@ -149,6 +157,7 @@ async function createAuthUser(apiKey, user) {
   throw new Error(`Failed to create Firebase Auth user ${user.email}: ${errorMessage}`);
 }
 
+// Runs auth seeding one user at a time and prints a simple summary.
 async function seedAuthUsers(apiKey, users) {
   const summary = {
     created: 0,
@@ -171,6 +180,7 @@ async function seedAuthUsers(apiKey, users) {
   return summary;
 }
 
+// Entry point: load config, build a plan, then seed Firestore and optionally Auth.
 async function main() {
   loadEnvFile();
 

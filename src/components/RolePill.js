@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { AppText } from "./AppText";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Small badge used to show the current portal or role context.
 export function RolePill({ label }) {
   const { theme } = useTheme();
 

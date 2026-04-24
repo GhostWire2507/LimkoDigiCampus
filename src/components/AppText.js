@@ -1,6 +1,7 @@
 import { Text } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Shared text component so typography and colors stay consistent everywhere.
 export function AppText({ children, variant = "body", style, numberOfLines }) {
   const { theme } = useTheme();
   const fontFamily = "Inclusive Sans";

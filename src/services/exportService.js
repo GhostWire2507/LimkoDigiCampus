@@ -1,9 +1,13 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
 import { createCsvContent } from "../utils/helpers";
 
-export async function exportReportsToCsv(reports) {
-  const rows = reports.map((report) => ({
+const CSV_FILE_NAME = "limko-monitoring-reports.csv";
+
+// Converts the current report list into plain CSV row data.
+function createReportRows(reports) {
+  return reports.map((report) => ({
     faculty: report.facultyName,
     programme: report.programmeName,
     className: report.classDisplayName,
@@ -20,9 +24,41 @@ export async function exportReportsToCsv(reports) {
     seniorLecturerFeedback: report.seniorLecturerFeedback || "",
     status: report.reviewStatus
   }));
+}
 
+// Saves a CSV file locally and triggers a browser download on web.
+export async function exportReportsToCsv(reports) {
+  const rows = createReportRows(reports);
   const content = createCsvContent(rows);
-  const path = `${FileSystem.cacheDirectory}limko-monitoring-reports.csv`;
+
+  if (Platform.OS === "web" && typeof document !== "undefined") {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", CSV_FILE_NAME);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    return { filename: CSV_FILE_NAME, path: CSV_FILE_NAME };
+  }
+
+  const path = `${FileSystem.documentDirectory}${CSV_FILE_NAME}`;
+
+  await FileSystem.writeAsStringAsync(path, content, {
+    encoding: FileSystem.EncodingType.UTF8
+  });
+
+  return { filename: CSV_FILE_NAME, path };
+}
+
+// Opens the native share sheet for the generated CSV file when supported.
+export async function shareReportsCsv(reports) {
+  const rows = createReportRows(reports);
+  const content = createCsvContent(rows);
+  const path = `${FileSystem.cacheDirectory}${CSV_FILE_NAME}`;
 
   await FileSystem.writeAsStringAsync(path, content, {
     encoding: FileSystem.EncodingType.UTF8
@@ -32,5 +68,5 @@ export async function exportReportsToCsv(reports) {
     await Sharing.shareAsync(path);
   }
 
-  return path;
+  return { filename: CSV_FILE_NAME, path };
 }

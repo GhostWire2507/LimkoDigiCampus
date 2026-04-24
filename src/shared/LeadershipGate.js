@@ -2,6 +2,7 @@ import { EmptyState } from "../components/EmptyState";
 
 const leadershipRoles = ["prl", "pl", "fmg"];
 
+// Guards leadership-only screens with a friendly placeholder for other roles.
 export function LeadershipGate({
   user,
   children,

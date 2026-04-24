@@ -11,6 +11,7 @@ import { getClassesForRole, getReportsForRole } from "../services/dataService";
 import { titleCaseStatus } from "../shared/helpers";
 import { useLoad } from "../shared/useLoad";
 
+// Shows one class plus the most recent report tied to it.
 function ClassDetailScreen() {
   const { user } = useAuth();
   const { classId } = useLocalSearchParams();

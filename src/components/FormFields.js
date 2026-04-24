@@ -4,6 +4,7 @@ import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "./AppText";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Reusable text input with optional password reveal support.
 const TextFieldComponent = forwardRef(function TextField(
   {
     label,
@@ -102,6 +103,7 @@ const TextFieldComponent = forwardRef(function TextField(
 
 export const TextField = memo(TextFieldComponent);
 
+// Simple chip-style single-select field used for short option lists.
 export function SelectField({ label, value, options, onChange, placeholder = "Select an option" }) {
   const { theme } = useTheme();
 
@@ -166,6 +168,7 @@ export function SelectField({ label, value, options, onChange, placeholder = "Se
   );
 }
 
+// Similar to SelectField, but allows more than one choice at a time.
 export function MultiSelectField({ label, values = [], options, onChange, placeholder = "Select one or more options" }) {
   const { theme } = useTheme();
   const selectedValues = useMemo(() => new Set(values), [values]);

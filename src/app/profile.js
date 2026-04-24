@@ -9,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { formatRole } from "../utils/helpers";
 
+// Shows a simple account summary plus theme and logout actions.
 function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();

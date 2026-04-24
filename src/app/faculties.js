@@ -12,6 +12,7 @@ import { LeadershipGate } from "../shared/LeadershipGate";
 import { useLoad } from "../shared/useLoad";
 import { useState } from "react";
 
+// Gives leadership users a quick overview of faculties in their current scope.
 function FacultiesScreen() {
   const { user } = useAuth();
   const [faculties] = useLoad(() => getFacultiesForRole(user), user);

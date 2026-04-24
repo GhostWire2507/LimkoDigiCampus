@@ -12,6 +12,7 @@ import { LeadershipGate } from "../shared/LeadershipGate";
 import { titleCaseStatus } from "../shared/helpers";
 import { useLoad } from "../shared/useLoad";
 
+// Combines attendance, reporting, and ratings into one leadership dashboard.
 function MonitoringScreen() {
   const { user } = useAuth();
   const [monitoring] = useLoad(() => getMonitoringForRole(user), user);

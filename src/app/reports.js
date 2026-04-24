@@ -9,12 +9,13 @@ import { TextField } from "../components/FormFields";
 import { ScreenWrapper } from "../components/ScreenWrapper";
 import { SearchBar } from "../components/SearchBar";
 import { useAuth } from "../contexts/AuthContext";
-import { exportReportsToCsv } from "../services/exportService";
+import { exportReportsToCsv, shareReportsCsv } from "../services/exportService";
 import { deleteReport, getReportsForRole, updateReportFeedback } from "../services/dataService";
 import { filterByQuery } from "../utils/helpers";
 import { titleCaseStatus } from "../shared/helpers";
 import { useLoad } from "../shared/useLoad";
 
+// Lets PRLs review reports while other roles browse and manage visible submissions.
 function SeniorLecturerFeedbackForm({ report, onSaved }) {
   const { user } = useAuth();
   const [feedback, setFeedback] = useState(report.seniorLecturerFeedback || "");
@@ -33,6 +34,7 @@ function SeniorLecturerFeedbackForm({ report, onSaved }) {
   );
 }
 
+// Shows report history, exports, and leadership review actions in one place.
 function ReportsScreen() {
   const { user } = useAuth();
   const [reports, setReports] = useLoad(() => getReportsForRole(user), user);
@@ -45,9 +47,14 @@ function ReportsScreen() {
     "reviewStatus"
   ]);
 
-  const handleExport = async () => {
-    await exportReportsToCsv(filteredReports);
-    Alert.alert("Export ready", "The report file was generated and shared as CSV.");
+  const handleDownload = async () => {
+    const result = await exportReportsToCsv(filteredReports);
+    Alert.alert("CSV saved", `The report file was downloaded or saved as ${result.filename}.`);
+  };
+
+  const handleShare = async () => {
+    await shareReportsCsv(filteredReports);
+    Alert.alert("Share ready", "The report file was generated and opened in the share sheet.");
   };
 
   const canDeleteReport = (report) =>
@@ -72,7 +79,10 @@ function ReportsScreen() {
     <ScrollView showsVerticalScrollIndicator={false}>
       <AppHeader title="Lecture Reports" subtitle="Track reporting flow from lecturer submission to leadership review." showBack />
       <SearchBar value={query} onChangeText={setQuery} placeholder="Search by class, course, lecturer, week, or status" />
-      <AppButton title="Export CSV" variant="secondary" onPress={handleExport} style={{ marginBottom: 16 }} />
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+        <AppButton title="Download CSV" variant="secondary" onPress={handleDownload} style={{ flex: 1 }} />
+        <AppButton title="Share CSV" variant="secondary" onPress={handleShare} style={{ flex: 1 }} />
+      </View>
 
       {filteredReports.length ? (
         filteredReports.map((report) => (

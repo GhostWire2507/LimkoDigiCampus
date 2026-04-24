@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getRegistrationOptions, peekCachedData } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
+// Lets a student choose a faculty, then narrows programmes and classes from that choice.
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp } = useAuth();
@@ -39,6 +40,7 @@ export default function RegisterScreen() {
     [form.facultyId, options.programmes]
   );
   const classOptions = useMemo(() => {
+    // Only show classes that belong to the selected faculty and programmes.
     const allowedClasses = options.classes.filter((classItem) => {
       if (classItem.facultyId !== form.facultyId) {
         return false;
@@ -59,6 +61,7 @@ export default function RegisterScreen() {
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
+  // Changing faculty resets the lower-level choices so the hierarchy stays valid.
   const updateFaculty = (facultyId) => {
     const selectedFaculty = options.faculties.find((faculty) => faculty.id === facultyId);
 

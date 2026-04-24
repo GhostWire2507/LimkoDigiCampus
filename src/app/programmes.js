@@ -12,6 +12,7 @@ import { filterByQuery } from "../utils/helpers";
 import { LeadershipGate } from "../shared/LeadershipGate";
 import { useLoad } from "../shared/useLoad";
 
+// Lists programmes that fall inside the signed-in user's allowed scope.
 function ProgrammesScreen() {
   const { user } = useAuth();
   const [programmes] = useLoad(() => getProgrammesForRole(user), user);

@@ -1,3 +1,4 @@
+// Shared gray palette used to keep light and dark mode visually related.
 export const bunker = {
   50: "#f0f1f2",
   100: "#dadbdf",
@@ -12,6 +13,7 @@ export const bunker = {
   950: "#121317"
 };
 
+// Light mode keeps the same mood as dark mode, just with softer brighter surfaces.
 export const lightTheme = {
   mode: "light",
   background: "#e9ebe8",
@@ -30,6 +32,7 @@ export const lightTheme = {
   glow: "rgba(104,108,122,0.22)"
 };
 
+// Dark mode is the default reference palette for the rest of the app styling.
 export const darkTheme = {
   mode: "dark",
   background: bunker[950],

@@ -1,3 +1,4 @@
+// Makes small status values look cleaner in the UI.
 export function titleCaseStatus(value) {
   if (!value) {
     return "";

@@ -13,6 +13,7 @@ import { deleteClassAssignment, getClassesForRole } from "../services/dataServic
 import { filterByQuery } from "../utils/helpers";
 import { useLoad } from "../shared/useLoad";
 
+// Lists the current user's visible classes and links into class-specific actions.
 function ClassesScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -26,6 +27,7 @@ function ClassesScreen() {
     "programmeName",
     "lecturerName"
   ]);
+  // Only leadership roles can remove class mappings from the system.
   const canDeleteClass = ["pl", "fmg"].includes(user.role);
 
   const handleDeleteClass = (classItem) => {

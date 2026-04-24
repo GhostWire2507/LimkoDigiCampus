@@ -2,6 +2,7 @@ import { BlurView } from "expo-blur";
 import { View } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Reusable glass-style container used for most dashboard sections and forms.
 export function Card({ children, style }) {
   const { theme, mode } = useTheme();
 

@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { AppTabBar } from "./AppTabBar";
 
+// Adds the shared page background, auth redirects, and bottom tab bar.
 export function ScreenWrapper({ children }) {
   const pathname = usePathname();
   const { user, loading } = useAuth();
@@ -16,6 +17,7 @@ export function ScreenWrapper({ children }) {
       : ["#f0f1f2", "#f8fafc", "#dadbdf"];
   const authRoutes = ["/login", "/register"];
 
+  // Protected screens wait for auth before deciding whether to render or redirect.
   if (loading && !authRoutes.includes(pathname)) {
     return (
       <LinearGradient colors={gradientColors} style={{ flex: 1 }}>

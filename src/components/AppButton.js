@@ -1,6 +1,7 @@
 import { Pressable, Text } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Shared button component that keeps styling consistent across the app.
 export function AppButton({ title, onPress, variant = "primary", style, disabled }) {
   const { theme } = useTheme();
 

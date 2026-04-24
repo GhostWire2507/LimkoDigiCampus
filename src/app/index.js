@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 
+// Sends users to the right starting screen once auth state is known.
 export default function IndexScreen() {
   const { user, loading } = useAuth();
   const { theme } = useTheme();

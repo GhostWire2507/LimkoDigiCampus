@@ -22,6 +22,7 @@ import {
 import { average, formatRole } from "../utils/helpers";
 import { useLoad } from "../shared/useLoad";
 
+// Keeps each role's most common next actions close to the dashboard summary.
 const quickActions = {
   student: [
     { title: "Open Classes", href: "/classes" },
@@ -50,6 +51,7 @@ const quickActions = {
   ]
 };
 
+// Builds the role-aware dashboard from the currently visible data scope.
 function DashboardScreen() {
   const { user, signOut } = useAuth();
   const { mode, toggleTheme } = useTheme();
@@ -78,6 +80,7 @@ function DashboardScreen() {
   const attendanceAverage = average(attendance.map((item) => item.attendanceRate));
   const averageRating = average(ratings.map((item) => item.rating));
   const nextClass = classes[0];
+  // Students see personal stats, while staff see monitoring-focused stats.
   const summaryCards =
     user.role === "student"
       ? [
@@ -165,6 +168,7 @@ function DashboardScreen() {
   );
 }
 
+// Wraps the dashboard in the shared auth/theme aware page shell.
 export default function HomeScreen() {
   return (
     <ScreenWrapper>

@@ -4,6 +4,7 @@ import { loadItem, saveItem } from "../services/storage";
 
 const ThemeContext = createContext(null);
 
+// Remembers the current color mode and makes it available app-wide.
 export function ThemeProvider({ children }) {
   const [mode, setMode] = useState("light");
 
