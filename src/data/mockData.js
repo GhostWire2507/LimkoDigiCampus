@@ -568,6 +568,22 @@ const baseUsers = [
     programmeIds: ["graphic-design", "fashion"]
   }),
   createUser({
+    id: "lecturer-thato",
+    fullName: "Thato Phafoli",
+    email: "thato.phafoli@limko.com",
+    role: "lecturer",
+    facultyId: "fcth",
+    programmeIds: ["tourism"]
+  }),
+  createUser({
+    id: "lecturer-lineo",
+    fullName: "Lineo Tsolo",
+    email: "lineo.tsolo@limko.com",
+    role: "lecturer",
+    facultyId: "fcth",
+    programmeIds: ["hotel"]
+  }),
+  createUser({
     id: "student-1",
     fullName: "Palesa Nthoi",
     email: "student@limko.com",
@@ -602,6 +618,24 @@ const baseUsers = [
     facultyId: "fcmb",
     programmeIds: ["pr"],
     assignedClassIds: ["pr-2a-public-relations", "tvf-2a-video-production"]
+  }),
+  createUser({
+    id: "student-5",
+    fullName: "Masego Tau",
+    email: "student5@limko.com",
+    role: "student",
+    facultyId: "fcth",
+    programmeIds: ["tourism"],
+    assignedClassIds: ["tourism-2a-destination-planning", "tourism-2b-tour-guiding"]
+  }),
+  createUser({
+    id: "student-6",
+    fullName: "Hlompho Letlatsa",
+    email: "student6@limko.com",
+    role: "student",
+    facultyId: "fcth",
+    programmeIds: ["hotel"],
+    assignedClassIds: ["hotel-2a-front-office-operations", "hotel-2b-hospitality-service"]
   })
 ];
 
@@ -989,6 +1023,70 @@ const classes = [
     venue: "Design Studio 2",
     scheduleDay: "Wednesday",
     scheduleTime: "10:00 - 12:00"
+  }),
+  createClass({
+    id: "tourism-2a-destination-planning",
+    facultyId: "fcth",
+    programmeId: "tourism",
+    plId: "pl-sebinane",
+    prlId: "prl-maili",
+    lecturerId: "lecturer-thato",
+    code: "TM 2A",
+    year: 2,
+    section: "A",
+    courseName: "Destination Planning",
+    studentCount: 32,
+    venue: "Travel Studio",
+    scheduleDay: "Monday",
+    scheduleTime: "10:00 - 12:00"
+  }),
+  createClass({
+    id: "tourism-2b-tour-guiding",
+    facultyId: "fcth",
+    programmeId: "tourism",
+    plId: "pl-sebinane",
+    prlId: "prl-maili",
+    lecturerId: "lecturer-thato",
+    code: "TM 2B",
+    year: 2,
+    section: "B",
+    courseName: "Tour Guiding Practice",
+    studentCount: 29,
+    venue: "Field Lab",
+    scheduleDay: "Thursday",
+    scheduleTime: "13:00 - 15:00"
+  }),
+  createClass({
+    id: "hotel-2a-front-office-operations",
+    facultyId: "fcth",
+    programmeId: "hotel",
+    plId: "pl-sebinane",
+    prlId: "prl-maili",
+    lecturerId: "lecturer-lineo",
+    code: "HM 2A",
+    year: 2,
+    section: "A",
+    courseName: "Front Office Operations",
+    studentCount: 27,
+    venue: "Hospitality Lab",
+    scheduleDay: "Tuesday",
+    scheduleTime: "09:00 - 11:00"
+  }),
+  createClass({
+    id: "hotel-2b-hospitality-service",
+    facultyId: "fcth",
+    programmeId: "hotel",
+    plId: "pl-sebinane",
+    prlId: "prl-maili",
+    lecturerId: "lecturer-lineo",
+    code: "HM 2B",
+    year: 2,
+    section: "B",
+    courseName: "Hospitality Service Excellence",
+    studentCount: 25,
+    venue: "Training Suite",
+    scheduleDay: "Friday",
+    scheduleTime: "11:00 - 13:00"
   })
 ];
 
@@ -1133,6 +1231,46 @@ const reports = [
     reviewStatus: "submitted",
     seniorLecturerFeedback: "",
     submittedAt: "2026-04-18T14:10:00.000Z"
+  },
+  {
+    id: "report-7",
+    classId: "tourism-2a-destination-planning",
+    facultyId: "fcth",
+    programmeId: "tourism",
+    lecturerId: "lecturer-thato",
+    lecturerName: "Thato Phafoli",
+    classDisplayName: "Tourism Management - Year 2 (Class A)",
+    courseName: "Destination Planning",
+    lectureDate: "2026-04-19",
+    weekLabel: "Week 7",
+    attendancePresent: 28,
+    attendanceTotal: 32,
+    topic: "Route mapping and visitor flow design",
+    outcomes: "Students planned destination itineraries with transport and timing constraints.",
+    recommendations: "More local tourism case studies would strengthen the practicals.",
+    reviewStatus: "reviewed",
+    seniorLecturerFeedback: "Solid practical approach. Add one assessment rubric example next session.",
+    submittedAt: "2026-04-19T10:10:00.000Z"
+  },
+  {
+    id: "report-8",
+    classId: "hotel-2a-front-office-operations",
+    facultyId: "fcth",
+    programmeId: "hotel",
+    lecturerId: "lecturer-lineo",
+    lecturerName: "Lineo Tsolo",
+    classDisplayName: "Hotel Management - Year 2 (Class A)",
+    courseName: "Front Office Operations",
+    lectureDate: "2026-04-20",
+    weekLabel: "Week 7",
+    attendancePresent: 23,
+    attendanceTotal: 27,
+    topic: "Guest check-in flow and reservation handling",
+    outcomes: "Students practised reception scenarios using booking records and service scripts.",
+    recommendations: "Need an extra mock reception desk session for slower learners.",
+    reviewStatus: "submitted",
+    seniorLecturerFeedback: "",
+    submittedAt: "2026-04-20T09:25:00.000Z"
   }
 ];
 
@@ -1143,7 +1281,9 @@ const attendance = [
   { id: "attendance-4", classId: "bit-2a-database-systems", lectureDate: "2026-04-16", lecturerId: "lecturer-khauhelo", totalPresent: 34 },
   { id: "attendance-5", classId: "se-3a-cyber-security", lectureDate: "2026-04-18", lecturerId: "lecturer-batloung", totalPresent: 28 },
   { id: "attendance-6", classId: "marketing-2a-brand-strategy", lectureDate: "2026-04-17", lecturerId: "lecturer-rethabile", totalPresent: 34 },
-  { id: "attendance-7", classId: "pr-2a-public-relations", lectureDate: "2026-04-18", lecturerId: "lecturer-pusetso", totalPresent: 25 }
+  { id: "attendance-7", classId: "pr-2a-public-relations", lectureDate: "2026-04-18", lecturerId: "lecturer-pusetso", totalPresent: 25 },
+  { id: "attendance-8", classId: "tourism-2a-destination-planning", lectureDate: "2026-04-19", lecturerId: "lecturer-thato", totalPresent: 28 },
+  { id: "attendance-9", classId: "hotel-2a-front-office-operations", lectureDate: "2026-04-20", lecturerId: "lecturer-lineo", totalPresent: 23 }
 ];
 
 const ratings = [
@@ -1182,6 +1322,24 @@ const ratings = [
     rating: 4,
     comment: "Examples were easy to follow and linked well to assessments.",
     createdAt: "2026-04-19T08:30:00.000Z"
+  },
+  {
+    id: "rating-5",
+    classId: "tourism-2a-destination-planning",
+    lecturerId: "lecturer-thato",
+    studentId: "student-5",
+    rating: 5,
+    comment: "The destination planning workshop felt practical and well-paced.",
+    createdAt: "2026-04-20T12:00:00.000Z"
+  },
+  {
+    id: "rating-6",
+    classId: "hotel-2a-front-office-operations",
+    lecturerId: "lecturer-lineo",
+    studentId: "student-6",
+    rating: 4,
+    comment: "The reception role-play helped me understand real guest handling.",
+    createdAt: "2026-04-21T11:10:00.000Z"
   }
 ];
 

@@ -14,20 +14,20 @@ export const bunker = {
 
 export const lightTheme = {
   mode: "light",
-  background: bunker[50],
-  card: "rgba(255,255,255,0.7)",
-  cardStrong: "rgba(255,255,255,0.9)",
-  text: bunker[900],
-  mutedText: bunker[500],
-  border: "rgba(218,219,223,0.6)",
-  primary: bunker[900],
-  primaryText: "#ffffff",
+  background: "#e9ebe8",
+  card: "rgba(244,245,241,0.82)",
+  cardStrong: "rgba(238,240,235,0.96)",
+  text: "#1f221f",
+  mutedText: "#5e655e",
+  border: "rgba(154,157,170,0.4)",
+  primary: "#2c2d35",
+  primaryText: "#eef0ec",
   success: "#2f9e44",
   warning: "#f08c00",
   danger: "#e03131",
   info: "#1971c2",
-  shadow: "rgba(18,19,23,0.12)",
-  glow: "rgba(104,108,122,0.35)"
+  shadow: "rgba(31,34,31,0.12)",
+  glow: "rgba(104,108,122,0.22)"
 };
 
 export const darkTheme = {

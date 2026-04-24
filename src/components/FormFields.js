@@ -1,47 +1,106 @@
-import { useMemo, useState } from "react";
+import { forwardRef, memo, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "./AppText";
 import { useTheme } from "../contexts/ThemeContext";
 
-export function TextField({ label, value, onChangeText, placeholder, multiline, keyboardType = "default", secureTextEntry = false }) {
+const TextFieldComponent = forwardRef(function TextField(
+  {
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    multiline,
+    keyboardType = "default",
+    secureTextEntry = false,
+    autoCapitalize = "sentences",
+    autoCorrect = true,
+    textContentType,
+    returnKeyType,
+    onSubmitEditing,
+    blurOnSubmit,
+    isFocused,
+    onFocus,
+    onBlur
+  },
+  ref
+) {
   const { theme } = useTheme();
-  const [focused, setFocused] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const [localFocused, setLocalFocused] = useState(false);
+  const focused = typeof isFocused === "boolean" ? isFocused : localFocused;
+  const shouldHide = secureTextEntry && !revealed;
+  const handleFocus = (event) => {
+    setLocalFocused(true);
+    onFocus?.(event);
+  };
+  const handleBlur = (event) => {
+    setLocalFocused(false);
+    onBlur?.(event);
+  };
 
   return (
     <View style={{ marginBottom: 14 }}>
       <AppText variant="subheading" style={{ marginBottom: 8 }}>
         {label}
       </AppText>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.mutedText}
-        multiline={multiline}
-        keyboardType={keyboardType}
-        secureTextEntry={secureTextEntry}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
+      <View
         style={{
           borderRadius: 18,
           borderWidth: 1,
           borderColor: focused ? theme.mutedText : theme.border,
           backgroundColor: theme.cardStrong,
-          color: theme.text,
           minHeight: multiline ? 120 : 52,
-          textAlignVertical: multiline ? "top" : "center",
           paddingHorizontal: 16,
-          paddingVertical: 14,
+          paddingVertical: multiline ? 14 : 0,
+          flexDirection: "row",
+          alignItems: multiline ? "flex-start" : "center",
           shadowColor: focused ? theme.glow : "transparent",
           shadowOpacity: focused ? 1 : 0,
           shadowRadius: focused ? 10 : 0,
           shadowOffset: { width: 0, height: 6 },
           elevation: focused ? 3 : 0
         }}
-      />
+      >
+        <TextInput
+          ref={ref}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.mutedText}
+          multiline={multiline}
+          keyboardType={keyboardType}
+          secureTextEntry={shouldHide}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          textContentType={textContentType}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
+          blurOnSubmit={blurOnSubmit}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          style={{
+            flex: 1,
+            color: theme.text,
+            minHeight: multiline ? 92 : 52,
+            textAlignVertical: multiline ? "top" : "center",
+            paddingVertical: multiline ? 0 : 14
+          }}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            onPress={() => setRevealed((current) => !current)}
+            style={{ paddingLeft: 12, paddingVertical: 10, alignSelf: multiline ? "flex-start" : "center" }}
+          >
+            <Ionicons name={revealed ? "eye-off-outline" : "eye-outline"} size={20} color={theme.mutedText} />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
-}
+});
+
+export const TextField = memo(TextFieldComponent);
 
 export function SelectField({ label, value, options, onChange, placeholder = "Select an option" }) {
   const { theme } = useTheme();

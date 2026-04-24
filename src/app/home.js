@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { ScrollView, View } from "react-native";
 import { AppButton } from "../components/AppButton";
-import { AppHeader, GreetingHeader } from "../components/AppHeader";
+import { AppHeader } from "../components/AppHeader";
 import { AppText } from "../components/AppText";
 import { Card } from "../components/Card";
 import { EmptyState } from "../components/EmptyState";
@@ -9,6 +9,7 @@ import { RolePill } from "../components/RolePill";
 import { ScreenWrapper } from "../components/ScreenWrapper";
 import { StatCard } from "../components/StatCard";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   getAttendanceForRole,
   getClassesForRole,
@@ -51,6 +52,7 @@ const quickActions = {
 
 function DashboardScreen() {
   const { user, signOut } = useAuth();
+  const { mode, toggleTheme } = useTheme();
   const router = useRouter();
   const [classes] = useLoad(() => getClassesForRole(user), user, peekCachedData("classes", user));
   const [reports] = useLoad(() => getReportsForRole(user), user, peekCachedData("reports", user));
@@ -92,7 +94,17 @@ function DashboardScreen() {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <GreetingHeader user={user} />
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <AppHeader title={`Hello, ${user.fullName.split(" ")[0]}`} subtitle={formatRole(user.role)} />
+        </View>
+        <AppButton
+          title={mode === "dark" ? "Light Mode" : "Dark Mode"}
+          variant="secondary"
+          onPress={toggleTheme}
+          style={{ alignSelf: "flex-start", paddingVertical: 10, paddingHorizontal: 14 }}
+        />
+      </View>
       <AppButton title="Logout" variant="secondary" onPress={handleLogout} style={{ alignSelf: "flex-start", marginBottom: 12 }} />
       <RolePill label={`${formatRole(user.role)} Portal`} />
 
