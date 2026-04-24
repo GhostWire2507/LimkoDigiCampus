@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { bootstrapLocalData, loginUser, registerUser, restoreUserSession, signOutUser } from "../services/dataService";
+import { bootstrapLocalData, loginUser, preloadWorkspaceData, registerUser, restoreUserSession, signOutUser } from "../services/dataService";
 import { removeItem, saveItem } from "../services/storage";
 
 const AuthContext = createContext(null);
@@ -11,7 +11,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     bootstrapLocalData()
       .then(() => restoreUserSession())
-      .then((storedUser) => setUser(storedUser))
+      .then((storedUser) => {
+        setUser(storedUser);
+
+        if (storedUser) {
+          void preloadWorkspaceData(storedUser);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -23,12 +29,14 @@ export function AuthProvider({ children }) {
         const nextUser = await loginUser(email, password);
         setUser(nextUser);
         await saveItem("currentUser", nextUser);
+        void preloadWorkspaceData(nextUser);
         return nextUser;
       },
       signUp: async (payload) => {
         const nextUser = await registerUser(payload);
         setUser(nextUser);
         await saveItem("currentUser", nextUser);
+        void preloadWorkspaceData(nextUser);
         return nextUser;
       },
       signOut: async () => {

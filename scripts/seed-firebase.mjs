@@ -186,7 +186,7 @@ async function main() {
 
   const mockData = loadMockData();
   const seedPlan = getSeedPlan(mockData);
-  const authSeedUsers = getAuthSeedUsers(mockData.mockUsers || []);
+  const authSeedUsers = getAuthSeedUsers(mockData.mockAuthSeedUsers || mockData.mockUsers || []);
 
   if (DRY_RUN) {
     console.log("Dry run only. Planned Firestore writes:");

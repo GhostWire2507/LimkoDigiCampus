@@ -9,6 +9,7 @@ import {
   mockUsers
 } from "../data/mockData";
 import { auth, db, hasFirebaseConfig } from "../lib/firebase";
+import { hashPassword, verifyPassword } from "../utils/auth";
 import {
   createDocument,
   deleteDocumentById,
@@ -32,7 +33,49 @@ const COLLECTIONS = {
   attendance: "attendance"
 };
 
-const DATA_VERSION = 3;
+const DATA_VERSION = 4;
+const dataCache = new Map();
+
+function getModeCacheKey() {
+  return isFirebaseReady() ? "firebase" : "local";
+}
+
+function getScopedCacheKey(scope, user = null) {
+  return `${getModeCacheKey()}:${scope}:${user?.role || "guest"}:${user?.id || "anonymous"}`;
+}
+
+function readThroughCache(key, loader) {
+  const cached = dataCache.get(key);
+
+  if (cached?.value !== undefined) {
+    return Promise.resolve(cached.value);
+  }
+
+  if (cached?.promise) {
+    return cached.promise;
+  }
+
+  const promise = loader()
+    .then((value) => {
+      dataCache.set(key, { value, promise: Promise.resolve(value) });
+      return value;
+    })
+    .catch((error) => {
+      dataCache.delete(key);
+      throw error;
+    });
+
+  dataCache.set(key, { promise });
+  return promise;
+}
+
+export function clearDataCaches() {
+  dataCache.clear();
+}
+
+export function peekCachedData(scope, user = null, fallback = []) {
+  return dataCache.get(getScopedCacheKey(scope, user))?.value || fallback;
+}
 
 function isFirebaseReady() {
   return Boolean(hasFirebaseConfig && auth && db && isFirebaseAvailable());
@@ -101,17 +144,19 @@ async function getCollectionItems(name, orderField) {
 }
 
 async function getLocalDataset() {
-  const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
-    loadItem("users", mockUsers),
-    loadItem("faculties", mockFaculties),
-    loadItem("programmes", mockProgrammes),
-    loadItem("classes", mockClasses),
-    loadItem("reports", mockReports),
-    loadItem("ratings", mockRatings),
-    loadItem("attendance", mockAttendance)
-  ]);
+  return readThroughCache("local:dataset", async () => {
+    const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
+      loadItem("users", mockUsers),
+      loadItem("faculties", mockFaculties),
+      loadItem("programmes", mockProgrammes),
+      loadItem("classes", mockClasses),
+      loadItem("reports", mockReports),
+      loadItem("ratings", mockRatings),
+      loadItem("attendance", mockAttendance)
+    ]);
 
-  return { users, faculties, programmes, classes, reports, ratings, attendance };
+    return { users, faculties, programmes, classes, reports, ratings, attendance };
+  });
 }
 
 async function getDataset() {
@@ -119,17 +164,19 @@ async function getDataset() {
     return getLocalDataset();
   }
 
-  const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
-    getCollectionItems(COLLECTIONS.users),
-    getCollectionItems(COLLECTIONS.faculties, "name"),
-    getCollectionItems(COLLECTIONS.programmes, "name"),
-    getCollectionItems(COLLECTIONS.classes, "displayName"),
-    getCollectionItems(COLLECTIONS.reports),
-    getCollectionItems(COLLECTIONS.ratings),
-    getCollectionItems(COLLECTIONS.attendance)
-  ]);
+  return readThroughCache("firebase:dataset", async () => {
+    const [users, faculties, programmes, classes, reports, ratings, attendance] = await Promise.all([
+      getCollectionItems(COLLECTIONS.users),
+      getCollectionItems(COLLECTIONS.faculties, "name"),
+      getCollectionItems(COLLECTIONS.programmes, "name"),
+      getCollectionItems(COLLECTIONS.classes, "displayName"),
+      getCollectionItems(COLLECTIONS.reports),
+      getCollectionItems(COLLECTIONS.ratings),
+      getCollectionItems(COLLECTIONS.attendance)
+    ]);
 
-  return { users, faculties, programmes, classes, reports, ratings, attendance };
+    return { users, faculties, programmes, classes, reports, ratings, attendance };
+  });
 }
 
 function canSeeFaculty(user, facultyId) {
@@ -277,6 +324,8 @@ export async function bootstrapLocalData() {
     saveItem("ratings", mockRatings),
     saveItem("attendance", mockAttendance)
   ]);
+
+  clearDataCaches();
 }
 
 export async function restoreUserSession() {
@@ -288,7 +337,16 @@ export async function restoreUserSession() {
     return getUserProfile(auth.currentUser.uid);
   }
 
-  return loadItem("currentUser", null);
+  const currentUser = await loadItem("currentUser", null);
+
+  if (currentUser?.password && !currentUser.passwordHash) {
+    return {
+      ...currentUser,
+      passwordHash: hashPassword(currentUser.password)
+    };
+  }
+
+  return currentUser;
 }
 
 export async function loginUser(email, password) {
@@ -303,7 +361,9 @@ export async function loginUser(email, password) {
 
   const users = await loadItem("users", mockUsers);
   const matchedUser = users.find(
-    (user) => user.email.toLowerCase() === email.toLowerCase() && user.password === password
+    (user) =>
+      user.email.toLowerCase() === email.toLowerCase() &&
+      (verifyPassword(password, user.passwordHash) || (!user.passwordHash && user.password === password))
   );
 
   if (!matchedUser) {
@@ -318,7 +378,7 @@ export async function registerUser(payload) {
     id: `user-${Date.now()}`,
     fullName: payload.fullName,
     email: payload.email.trim().toLowerCase(),
-    password: payload.password,
+    passwordHash: hashPassword(payload.password),
     role: payload.role,
     facultyId: payload.facultyId || "fict",
     facultyName: payload.facultyName || "Information & Communication Technology",
@@ -334,7 +394,7 @@ export async function registerUser(payload) {
         ...nextUser,
         id: credentials.user.uid
       };
-      delete firebaseUser.password;
+      delete firebaseUser.passwordHash;
       await createDocument(COLLECTIONS.users, firebaseUser, { id: credentials.user.uid });
       return getUserProfile(credentials.user.uid);
     } catch (error) {
@@ -344,141 +404,213 @@ export async function registerUser(payload) {
 
   const users = await loadItem("users", mockUsers);
   await saveItem("users", [nextUser, ...users]);
+  clearDataCaches();
   return nextUser;
 }
 
 export async function getFacultiesForRole(user) {
-  const dataset = await getDataset();
-  return dataset.faculties
-    .filter((faculty) => canSeeFaculty(user, faculty.id))
-    .map((faculty) => ({
-      ...faculty,
-      programmeCount: dataset.programmes.filter((programme) => programme.facultyId === faculty.id).length,
-      classCount: dataset.classes.filter((classItem) => classItem.facultyId === faculty.id).length
-    }));
+  const cacheKey = getScopedCacheKey("faculties", user);
+
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+    return dataset.faculties
+      .filter((faculty) => canSeeFaculty(user, faculty.id))
+      .map((faculty) => ({
+        ...faculty,
+        programmeCount: dataset.programmes.filter((programme) => programme.facultyId === faculty.id).length,
+        classCount: dataset.classes.filter((classItem) => classItem.facultyId === faculty.id).length
+      }));
+  });
 }
 
 export async function getProgrammesForRole(user) {
-  const dataset = await getDataset();
+  const cacheKey = getScopedCacheKey("programmes", user);
 
-  return dataset.programmes
-    .filter((programme) => canSeeProgramme(user, programme.id) || canSeeFaculty(user, programme.facultyId))
-    .map((programme) => {
-      const faculty = dataset.faculties.find((item) => item.id === programme.facultyId);
-      const programmeClasses = dataset.classes.filter((classItem) => classItem.programmeId === programme.id);
-      return {
-        ...programme,
-        facultyName: faculty?.name || "",
-        classCount: programmeClasses.length
-      };
-    });
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+
+    return dataset.programmes
+      .filter((programme) => canSeeProgramme(user, programme.id) || canSeeFaculty(user, programme.facultyId))
+      .map((programme) => {
+        const faculty = dataset.faculties.find((item) => item.id === programme.facultyId);
+        const programmeClasses = dataset.classes.filter((classItem) => classItem.programmeId === programme.id);
+        return {
+          ...programme,
+          facultyName: faculty?.name || "",
+          classCount: programmeClasses.length
+        };
+      });
+  });
 }
 
 export async function getClassesForRole(user) {
-  const dataset = await getDataset();
-  return sortItems(
-    dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => enrichClass(classItem, dataset)),
-    "displayName",
-    "asc"
-  );
+  const cacheKey = getScopedCacheKey("classes", user);
+
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+    return sortItems(
+      dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => enrichClass(classItem, dataset)),
+      "displayName",
+      "asc"
+    );
+  });
 }
 
 export async function getReportsForRole(user) {
-  const dataset = await getDataset();
-  const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
+  const cacheKey = getScopedCacheKey("reports", user);
 
-  return sortItems(
-    dataset.reports
-      .filter((report) => visibleClassIds.includes(report.classId))
-      .map((report) => enrichReport(report, dataset)),
-    "submittedAt",
-    "desc"
-  );
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+    const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
+
+    return sortItems(
+      dataset.reports
+        .filter((report) => visibleClassIds.includes(report.classId))
+        .map((report) => enrichReport(report, dataset)),
+      "submittedAt",
+      "desc"
+    );
+  });
 }
 
 export async function getRatingsForRole(user) {
-  const dataset = await getDataset();
-  const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
+  const cacheKey = getScopedCacheKey("ratings", user);
 
-  return sortItems(
-    dataset.ratings
-      .filter((rating) => {
-        if (user.role === "student") {
-          return rating.studentId === user.id;
-        }
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+    const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
 
-        return visibleClassIds.includes(rating.classId);
-      })
-      .map((rating) => enrichRating(rating, dataset)),
-    "createdAt",
-    "desc"
-  );
+    return sortItems(
+      dataset.ratings
+        .filter((rating) => {
+          if (user.role === "student") {
+            return rating.studentId === user.id;
+          }
+
+          return visibleClassIds.includes(rating.classId);
+        })
+        .map((rating) => enrichRating(rating, dataset)),
+      "createdAt",
+      "desc"
+    );
+  });
 }
 
 export async function getAttendanceForRole(user) {
-  const dataset = await getDataset();
-  const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
+  const cacheKey = getScopedCacheKey("attendance", user);
 
-  return sortItems(
-    dataset.attendance
-      .filter((record) => visibleClassIds.includes(record.classId))
-      .map((record) => enrichAttendance(record, dataset)),
-    "lectureDate",
-    "desc"
-  );
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+    const visibleClassIds = dataset.classes.filter((classItem) => canSeeClass(user, classItem)).map((classItem) => classItem.id);
+
+    return sortItems(
+      dataset.attendance
+        .filter((record) => visibleClassIds.includes(record.classId))
+        .map((record) => enrichAttendance(record, dataset)),
+      "lectureDate",
+      "desc"
+    );
+  });
 }
 
 export async function getMonitoringForRole(user) {
-  const dataset = await getDataset();
-  return sortItems(buildMonitoringRows(user, dataset), "attendanceAverage", "desc");
+  const cacheKey = getScopedCacheKey("monitoring", user);
+
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+    return sortItems(buildMonitoringRows(user, dataset), "attendanceAverage", "desc");
+  });
 }
 
 export async function getUserDirectory(user) {
-  const dataset = await getDataset();
+  const cacheKey = getScopedCacheKey("directory", user);
 
-  return dataset.users.filter((entry) => {
-    if (user.role === "fmg") return true;
-    if (user.role === "pl" || user.role === "prl") {
-      return entry.facultyId === user.facultyId;
-    }
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
 
-    return entry.id === user.id;
+    return dataset.users.filter((entry) => {
+      if (user.role === "fmg") return true;
+      if (user.role === "pl" || user.role === "prl") {
+        return entry.facultyId === user.facultyId;
+      }
+
+      return entry.id === user.id;
+    });
   });
+}
+
+export async function getRegistrationOptions() {
+  const cacheKey = getScopedCacheKey("registration-options");
+
+  return readThroughCache(cacheKey, async () => {
+    const dataset = await getDataset();
+
+    return {
+      faculties: sortItems(dataset.faculties, "name", "asc"),
+      programmes: sortItems(dataset.programmes, "name", "asc"),
+      classes: sortItems(dataset.classes.map((classItem) => enrichClass(classItem, dataset)), "displayName", "asc")
+    };
+  });
+}
+
+export function preloadWorkspaceData(user) {
+  if (!user) {
+    return Promise.resolve();
+  }
+
+  return Promise.all([
+    getFacultiesForRole(user),
+    getProgrammesForRole(user),
+    getClassesForRole(user),
+    getReportsForRole(user),
+    getRatingsForRole(user),
+    getAttendanceForRole(user),
+    getMonitoringForRole(user)
+  ]);
 }
 
 export async function saveReport(report) {
   if (isFirebaseReady()) {
-    return createDocument(COLLECTIONS.reports, report);
+    const created = await createDocument(COLLECTIONS.reports, report);
+    clearDataCaches();
+    return created;
   }
 
   const reports = await loadItem("reports", mockReports);
   const nextReports = [{ id: `report-${Date.now()}`, ...report }, ...reports];
   await saveItem("reports", nextReports);
+  clearDataCaches();
   return nextReports;
 }
 
 export async function saveRating(rating) {
   if (isFirebaseReady()) {
-    return createDocument(COLLECTIONS.ratings, {
+    const created = await createDocument(COLLECTIONS.ratings, {
       ...rating,
       createdAt: rating.createdAt || new Date().toISOString()
     });
+    clearDataCaches();
+    return created;
   }
 
   const ratings = await loadItem("ratings", mockRatings);
   const nextRatings = [{ id: `rating-${Date.now()}`, ...rating }, ...ratings];
   await saveItem("ratings", nextRatings);
+  clearDataCaches();
   return nextRatings;
 }
 
 export async function saveAttendance(record) {
   if (isFirebaseReady()) {
-    return createDocument(COLLECTIONS.attendance, record);
+    const created = await createDocument(COLLECTIONS.attendance, record);
+    clearDataCaches();
+    return created;
   }
 
   const attendance = await loadItem("attendance", mockAttendance);
   const nextAttendance = [{ id: `attendance-${Date.now()}`, ...record }, ...attendance];
   await saveItem("attendance", nextAttendance);
+  clearDataCaches();
   return nextAttendance;
 }
 
@@ -504,6 +636,8 @@ export async function updateReportFeedback(reportId, seniorLecturerFeedback, rev
 
     await saveItem("reports", nextReports);
   }
+
+  clearDataCaches();
 
   if (user) {
     return getReportsForRole(user);
@@ -531,6 +665,8 @@ export async function saveClassAssignment(classItem) {
     await saveItem("classes", nextClasses);
   }
 
+  clearDataCaches();
+
   return getClassesForRole({ id: "fmg-1", role: "fmg" });
 }
 
@@ -548,6 +684,8 @@ export async function deleteReport(reportId, user = { id: "fmg-1", role: "fmg" }
     await removeFromLocalCollection("reports", mockReports, reportId);
   }
 
+  clearDataCaches();
+
   return getReportsForRole(user);
 }
 
@@ -557,6 +695,8 @@ export async function deleteRating(ratingId, user = { id: "fmg-1", role: "fmg" }
   } else {
     await removeFromLocalCollection("ratings", mockRatings, ratingId);
   }
+
+  clearDataCaches();
 
   return getRatingsForRole(user);
 }
@@ -568,6 +708,8 @@ export async function deleteAttendance(attendanceId, user = { id: "fmg-1", role:
     await removeFromLocalCollection("attendance", mockAttendance, attendanceId);
   }
 
+  clearDataCaches();
+
   return getAttendanceForRole(user);
 }
 
@@ -578,6 +720,8 @@ export async function deleteClassAssignment(classId, user = { id: "fmg-1", role:
     await removeFromLocalCollection("classes", mockClasses, classId);
   }
 
+  clearDataCaches();
+
   return getClassesForRole(user);
 }
 
@@ -585,6 +729,8 @@ export async function signOutUser() {
   if (isFirebaseReady()) {
     await signOut(auth);
   }
+
+  clearDataCaches();
 }
 
 export function buildReportFromClass(classItem, values, user) {

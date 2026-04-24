@@ -36,7 +36,7 @@ export default function LoginScreen() {
 
         <Card>
           <TextField label="Email" value={email} onChangeText={setEmail} placeholder="name@email.com" />
-          <TextField label="Password" value={password} onChangeText={setPassword} placeholder="Your password" />
+          <TextField label="Password" value={password} onChangeText={setPassword} placeholder="Your password" secureTextEntry />
           <AppButton title="Login" onPress={handleLogin} />
           <AppText variant="caption" style={{ marginTop: 16 }}>
             {hasFirebaseConfig

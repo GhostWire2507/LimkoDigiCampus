@@ -13,6 +13,7 @@ import {
   getAttendanceForRole,
   getClassesForRole,
   getFacultiesForRole,
+  peekCachedData,
   getProgrammesForRole,
   getRatingsForRole,
   getReportsForRole
@@ -49,14 +50,19 @@ const quickActions = {
 };
 
 function DashboardScreen() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
-  const [classes] = useLoad(() => getClassesForRole(user), user);
-  const [reports] = useLoad(() => getReportsForRole(user), user);
-  const [ratings] = useLoad(() => getRatingsForRole(user), user);
-  const [attendance] = useLoad(() => getAttendanceForRole(user), user);
-  const [programmes] = useLoad(() => getProgrammesForRole(user), user);
-  const [faculties] = useLoad(() => getFacultiesForRole(user), user);
+  const [classes] = useLoad(() => getClassesForRole(user), user, peekCachedData("classes", user));
+  const [reports] = useLoad(() => getReportsForRole(user), user, peekCachedData("reports", user));
+  const [ratings] = useLoad(() => getRatingsForRole(user), user, peekCachedData("ratings", user));
+  const [attendance] = useLoad(() => getAttendanceForRole(user), user, peekCachedData("attendance", user));
+  const [programmes] = useLoad(() => getProgrammesForRole(user), user, peekCachedData("programmes", user));
+  const [faculties] = useLoad(() => getFacultiesForRole(user), user, peekCachedData("faculties", user));
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace("/login");
+  };
 
   if (!user) {
     return (
@@ -87,6 +93,7 @@ function DashboardScreen() {
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <GreetingHeader user={user} />
+      <AppButton title="Logout" variant="secondary" onPress={handleLogout} style={{ alignSelf: "flex-start", marginBottom: 12 }} />
       <RolePill label={`${formatRole(user.role)} Portal`} />
 
       <View style={{ gap: 12, marginTop: 16, marginBottom: 16 }}>
