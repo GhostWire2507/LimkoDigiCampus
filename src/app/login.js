@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, View } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { AppButton } from "../components/AppButton";
 import { AppText } from "../components/AppText";
-import { TextField } from "../components/FormFields";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { hasFirebaseConfig } from "../lib/firebase";
@@ -15,6 +15,7 @@ export default function LoginScreen() {
   const { signIn } = useAuth();
   const { theme } = useTheme();
   const passwordRef = useRef(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: ""
@@ -62,32 +63,71 @@ export default function LoginScreen() {
               marginBottom: 16
             }}
           >
-            <TextField
-              label="Email"
-              value={form.email}
-              onChangeText={(value) => updateField("email", value)}
-              placeholder="name@email.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="username"
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => passwordRef.current?.focus()}
-            />
-            <TextField
-              ref={passwordRef}
-              label="Password"
-              value={form.password}
-              onChangeText={(value) => updateField("password", value)}
-              placeholder="Your password"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="password"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+            <AppText variant="subheading" style={{ marginBottom: 8 }}>
+              Email
+            </AppText>
+            <View
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.cardStrong,
+                minHeight: 52,
+                paddingHorizontal: 16,
+                justifyContent: "center",
+                marginBottom: 14
+              }}
+            >
+              <TextInput
+                value={form.email}
+                onChangeText={(value) => updateField("email", value)}
+                placeholder="name@email.com"
+                placeholderTextColor={theme.mutedText}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="username"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                style={{ color: theme.text, minHeight: 52 }}
+              />
+            </View>
+
+            <AppText variant="subheading" style={{ marginBottom: 8 }}>
+              Password
+            </AppText>
+            <View
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.cardStrong,
+                minHeight: 52,
+                paddingHorizontal: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 14
+              }}
+            >
+              <TextInput
+                ref={passwordRef}
+                value={form.password}
+                onChangeText={(value) => updateField("password", value)}
+                placeholder="Your password"
+                placeholderTextColor={theme.mutedText}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                style={{ flex: 1, color: theme.text, minHeight: 52 }}
+              />
+              <Pressable onPress={() => setShowPassword((current) => !current)} style={{ paddingLeft: 12, paddingVertical: 10 }}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.mutedText} />
+              </Pressable>
+            </View>
             <AppButton title="Login" onPress={handleLogin} />
             <AppText variant="caption" style={{ marginTop: 16 }}>
               {hasFirebaseConfig
@@ -96,9 +136,7 @@ export default function LoginScreen() {
             </AppText>
           </View>
 
-          <Link href="/register" asChild>
-            <AppButton title="Register (Students only)" variant="secondary" />
-          </Link>
+          <AppButton title="Register (Students only)" variant="secondary" onPress={() => router.push("/register")} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
