@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,7 +45,11 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
       >
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 20, paddingTop: 12 }}>
+        <ScrollView
+          keyboardShouldPersistTaps="always"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 48, paddingBottom: 32 }}
+        >
           <View style={{ marginBottom: 20 }}>
             <AppText variant="title">LUCT Academic System</AppText>
             <AppText variant="caption" style={{ marginTop: 8 }}>
@@ -137,7 +141,7 @@ export default function LoginScreen() {
           </View>
 
           <AppButton title="Register (Students only)" variant="secondary" onPress={() => router.push("/register")} />
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
