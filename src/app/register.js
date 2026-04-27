@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { AppButton } from "../components/AppButton";
 import { AppText } from "../components/AppText";
 import { Card } from "../components/Card";
-import { MultiSelectField, SelectField, TextField } from "../components/FormFields";
-import { ScreenWrapper } from "../components/ScreenWrapper";
+import { MultiSelectField, SelectField } from "../components/FormFields";
 import { roles } from "../constants/roles";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { getRegistrationOptions, peekCachedData } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
@@ -15,6 +17,10 @@ import { useLoad } from "../shared/useLoad";
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp } = useAuth();
+  const { theme } = useTheme();
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const [showPassword, setShowPassword] = useState(false);
   const cachedOptions = useMemo(() => peekCachedData("registration-options", null, { faculties: [], programmes: [], classes: [] }), []);
   const [options] = useLoad(() => getRegistrationOptions(), "registration-options", cachedOptions);
   const [form, setForm] = useState({
@@ -95,17 +101,16 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScreenWrapper>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
       >
         <ScrollView
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 48, paddingBottom: 32 }}
         >
           <View style={{ marginBottom: 20 }}>
             <AppButton
@@ -121,15 +126,101 @@ export default function RegisterScreen() {
           </View>
 
           <Card>
-            <TextField label="Full Name" value={form.fullName} onChangeText={(value) => update("fullName", value)} placeholder="Your name" />
-            <TextField label="Email" value={form.email} onChangeText={(value) => update("email", value)} placeholder="name@email.com" />
-            <TextField
-              label="Password"
-              value={form.password}
-              onChangeText={(value) => update("password", value)}
-              placeholder="Password"
-              secureTextEntry
-            />
+            <AppText variant="subheading" style={{ marginBottom: 8 }}>
+              Full Name
+            </AppText>
+            <View
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.cardStrong,
+                minHeight: 52,
+                paddingHorizontal: 16,
+                justifyContent: "center",
+                marginBottom: 14
+              }}
+            >
+              <TextInput
+                value={form.fullName}
+                onChangeText={(value) => update("fullName", value)}
+                placeholder="Your name"
+                placeholderTextColor={theme.mutedText}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => emailRef.current?.focus()}
+                style={{ color: theme.text, minHeight: 52 }}
+              />
+            </View>
+
+            <AppText variant="subheading" style={{ marginBottom: 8 }}>
+              Email
+            </AppText>
+            <View
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.cardStrong,
+                minHeight: 52,
+                paddingHorizontal: 16,
+                justifyContent: "center",
+                marginBottom: 14
+              }}
+            >
+              <TextInput
+                ref={emailRef}
+                value={form.email}
+                onChangeText={(value) => update("email", value)}
+                placeholder="name@email.com"
+                placeholderTextColor={theme.mutedText}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="username"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                style={{ color: theme.text, minHeight: 52 }}
+              />
+            </View>
+
+            <AppText variant="subheading" style={{ marginBottom: 8 }}>
+              Password
+            </AppText>
+            <View
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: theme.border,
+                backgroundColor: theme.cardStrong,
+                minHeight: 52,
+                paddingHorizontal: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 14
+              }}
+            >
+              <TextInput
+                ref={passwordRef}
+                value={form.password}
+                onChangeText={(value) => update("password", value)}
+                placeholder="Password"
+                placeholderTextColor={theme.mutedText}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                returnKeyType="done"
+                onSubmitEditing={handleRegister}
+                style={{ flex: 1, color: theme.text, minHeight: 52 }}
+              />
+              <Pressable onPress={() => setShowPassword((current) => !current)} style={{ paddingLeft: 12, paddingVertical: 10 }}>
+                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.mutedText} />
+              </Pressable>
+            </View>
             <SelectField
               label="Role"
               value={form.role}
@@ -162,6 +253,6 @@ export default function RegisterScreen() {
           </Card>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenWrapper>
+    </SafeAreaView>
   );
 }
