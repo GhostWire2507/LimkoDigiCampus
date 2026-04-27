@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, ScrollView } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 import { AppButton } from "../components/AppButton";
 import { AppHeader } from "../components/AppHeader";
 import { AppText } from "../components/AppText";
@@ -8,12 +8,14 @@ import { EmptyState } from "../components/EmptyState";
 import { SelectField, TextField } from "../components/FormFields";
 import { ScreenWrapper } from "../components/ScreenWrapper";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { deleteRating, getClassesForRole, getRatingsForRole, saveRating } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
 // Students submit lecturer feedback here, while leadership can review or remove entries.
 function RatingsScreen() {
   const { user } = useAuth();
+  const { theme } = useTheme();
 
   if (!user) {
     return null;
@@ -24,6 +26,8 @@ function RatingsScreen() {
   const [selectedClassId, setSelectedClassId] = useState("");
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     if (classes[0] && !selectedClassId) {
@@ -36,31 +40,49 @@ function RatingsScreen() {
     value: classItem.id
   }));
 
+  const validate = () => {
+    if (user.role !== "student") {
+      Alert.alert("Access denied", "Only students can submit feedback.");
+      return false;
+    }
+    const selectedClass = classes.find((classItem) => classItem.id === selectedClassId);
+    if (!selectedClass) {
+      Alert.alert("Class required", "Please choose a class.");
+      return false;
+    }
+    const ratingNum = Number(rating);
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      Alert.alert("Invalid rating", "Please enter a rating between 1 and 5.");
+      return false;
+    }
+    return true;
+  };
+
   // Saves a new rating tied to the selected class and lecturer.
   const submitRating = async () => {
-    if (user.role !== "student") {
-      return;
-    }
+    if (!validate()) return;
 
     const selectedClass = classes.find((classItem) => classItem.id === selectedClassId);
 
-    if (!selectedClass) {
-      Alert.alert("Missing class", "Choose a class before submitting feedback.");
-      return;
+    setSubmitting(true);
+    try {
+      await saveRating({
+        classId: selectedClassId,
+        lecturerId: selectedClass.lecturerId,
+        studentId: user.id,
+        rating: Number(rating),
+        comment,
+        createdAt: new Date().toISOString()
+      });
+
+      setRatings(await getRatingsForRole(user));
+      setComment("");
+      Alert.alert("Feedback saved", "Your lecturer feedback has been submitted.");
+    } catch (error) {
+      Alert.alert("Submit failed", error?.message || "Failed to submit feedback. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    await saveRating({
-      classId: selectedClassId,
-      lecturerId: selectedClass.lecturerId,
-      studentId: user.id,
-      rating: Number(rating),
-      comment,
-      createdAt: new Date().toISOString()
-    });
-
-    setRatings(await getRatingsForRole(user));
-    setComment("");
-    Alert.alert("Feedback saved", "Your lecturer feedback has been submitted.");
   };
 
   const canDeleteRating = (item) =>
@@ -73,9 +95,16 @@ function RatingsScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          const nextRatings = await deleteRating(item.id, user);
-          setRatings(nextRatings);
-          Alert.alert("Feedback deleted", "The rating has been removed.");
+          setDeletingId(item.id);
+          try {
+            const nextRatings = await deleteRating(item.id, user);
+            setRatings(nextRatings);
+            Alert.alert("Feedback deleted", "The rating has been removed.");
+          } catch (error) {
+            Alert.alert("Delete failed", error?.message || "Failed to delete feedback.");
+          } finally {
+            setDeletingId(null);
+          }
         }
       }
     ]);
@@ -91,7 +120,7 @@ function RatingsScreen() {
           <SelectField label="Class" value={selectedClassId} onChange={setSelectedClassId} options={classOptions} placeholder="Choose a class" />
           <TextField label="Rating (1-5)" value={rating} onChangeText={setRating} placeholder="5" keyboardType="numeric" />
           <TextField label="Comment" value={comment} onChangeText={setComment} placeholder="What went well?" multiline />
-          <AppButton title="Submit Feedback" onPress={submitRating} />
+          <AppButton title="Submit Feedback" onPress={submitRating} loading={submitting} />
         </Card>
       ) : null}
 
@@ -116,6 +145,7 @@ function RatingsScreen() {
                 variant="secondary"
                 onPress={() => handleDeleteRating(item)}
                 style={{ marginTop: 12 }}
+                loading={deletingId === item.id}
               />
             ) : null}
           </Card>
@@ -134,3 +164,4 @@ export default function RatingsRoute() {
     </ScreenWrapper>
   );
 }
+

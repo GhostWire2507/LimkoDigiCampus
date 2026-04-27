@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, ScrollView } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 import { AppButton } from "../components/AppButton";
 import { AppHeader } from "../components/AppHeader";
 import { Card } from "../components/Card";
 import { SelectField, TextField } from "../components/FormFields";
 import { ScreenWrapper } from "../components/ScreenWrapper";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { getProgrammesForRole, getUserDirectory, saveClassAssignment } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
 // Used by leadership roles to create the class-to-programme teaching structure.
 function CourseFormScreen() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
 
   if (!user) {
@@ -21,6 +23,7 @@ function CourseFormScreen() {
 
   const [programmes] = useLoad(() => getProgrammesForRole(user), user);
   const [directory] = useLoad(() => getUserDirectory(user), user);
+  const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({
     programmeId: "",
     displayName: "",
@@ -58,33 +61,73 @@ function CourseFormScreen() {
   const selectedProgramme = programmes.find((programme) => programme.id === values.programmeId);
   const update = (key, value) => setValues((current) => ({ ...current, [key]: value }));
 
+  const validate = () => {
+    if (!values.programmeId) {
+      Alert.alert("Programme required", "Choose a programme before saving.");
+      return false;
+    }
+    if (!values.displayName.trim()) {
+      Alert.alert("Display name required", "Please enter a class display name.");
+      return false;
+    }
+    if (!values.code.trim()) {
+      Alert.alert("Code required", "Please enter a class code.");
+      return false;
+    }
+    if (!values.year.trim() || isNaN(Number(values.year))) {
+      Alert.alert("Year required", "Please enter a valid year number.");
+      return false;
+    }
+    if (!values.courseName.trim()) {
+      Alert.alert("Course name required", "Please enter a course name.");
+      return false;
+    }
+    if (!values.lecturerId) {
+      Alert.alert("Lecturer required", "Please assign a lecturer to this class.");
+      return false;
+    }
+    if (!values.studentCount.trim() || isNaN(Number(values.studentCount))) {
+      Alert.alert("Student count required", "Please enter a valid student count.");
+      return false;
+    }
+    return true;
+  };
+
   // Saves a single class mapping that links programme, lecturer, PRL, and schedule data.
   const handleSave = async () => {
+    if (!validate()) return;
+
     if (!selectedProgramme) {
       Alert.alert("Programme missing", "Choose a programme before saving the class mapping.");
       return;
     }
 
-    await saveClassAssignment({
-      id: `${values.programmeId}-${values.year}${values.section}-${values.courseName}`.toLowerCase().replace(/\s+/g, "-"),
-      facultyId: selectedProgramme.facultyId,
-      programmeId: values.programmeId,
-      plId: user.id,
-      prlId: values.prlId,
-      lecturerId: values.lecturerId,
-      code: values.code,
-      year: Number(values.year),
-      section: values.section,
-      displayName: values.displayName,
-      courseName: values.courseName,
-      studentCount: Number(values.studentCount),
-      venue: values.venue,
-      scheduleDay: values.scheduleDay,
-      scheduleTime: values.scheduleTime
-    });
+    setSaving(true);
+    try {
+      await saveClassAssignment({
+        id: `${values.programmeId}-${values.year}${values.section}-${values.courseName}`.toLowerCase().replace(/\s+/g, "-"),
+        facultyId: selectedProgramme.facultyId,
+        programmeId: values.programmeId,
+        plId: user.id,
+        prlId: values.prlId,
+        lecturerId: values.lecturerId,
+        code: values.code,
+        year: Number(values.year),
+        section: values.section,
+        displayName: values.displayName,
+        courseName: values.courseName,
+        studentCount: Number(values.studentCount),
+        venue: values.venue,
+        scheduleDay: values.scheduleDay,
+        scheduleTime: values.scheduleTime
+      });
 
-    Alert.alert("Class saved", "The class mapping has been added.");
-    router.replace("/classes");
+      Alert.alert("Class saved", "The class mapping has been added.");
+      router.replace("/classes");
+    } catch (error) {
+      Alert.alert("Save failed", error?.message || "Failed to save class mapping. Please try again.");
+      setSaving(false);
+    }
   };
 
   return (
@@ -109,7 +152,7 @@ function CourseFormScreen() {
         <TextField label="Venue" value={values.venue} onChangeText={(value) => update("venue", value)} placeholder="Lab 3" />
         <TextField label="Schedule Day" value={values.scheduleDay} onChangeText={(value) => update("scheduleDay", value)} placeholder="Tuesday" />
         <TextField label="Schedule Time" value={values.scheduleTime} onChangeText={(value) => update("scheduleTime", value)} placeholder="08:00 - 10:00" />
-        <AppButton title="Save Class Mapping" onPress={handleSave} />
+        <AppButton title="Save Class Mapping" onPress={handleSave} loading={saving} />
       </Card>
     </ScrollView>
   );
@@ -122,3 +165,4 @@ export default function CourseFormRoute() {
     </ScreenWrapper>
   );
 }
+

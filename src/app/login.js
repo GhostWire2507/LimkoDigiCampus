@@ -9,10 +9,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { hasFirebaseConfig } from "../lib/firebase";
 
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 // Handles sign-in and keeps the login keyboard flow stable on mobile.
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, isSubmitting } = useAuth();
   const { theme } = useTheme();
   const passwordRef = useRef(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +24,7 @@ export default function LoginScreen() {
     email: "",
     password: ""
   });
+  const [errors, setErrors] = useState({});
 
   // Merge updates so typing in one field never clears the other one.
   const updateField = (key, value) => {
@@ -27,14 +32,40 @@ export default function LoginScreen() {
       ...current,
       [key]: value
     }));
+    // Clear error for this field when user starts typing
+    if (errors[key]) {
+      setErrors((current) => ({ ...current, [key]: null }));
+    }
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!form.email.trim()) {
+      nextErrors.email = "Email is required";
+    } else if (!validateEmail(form.email.trim())) {
+      nextErrors.email = "Please enter a valid email address";
+    }
+
+    if (!form.password) {
+      nextErrors.password = "Password is required";
+    } else if (form.password.length < 4) {
+      nextErrors.password = "Password must be at least 4 characters";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleLogin = async () => {
+    if (!validate()) return;
+
     try {
-      await signIn(form.email, form.password);
+      await signIn(form.email.trim(), form.password);
       router.replace("/home");
     } catch (error) {
-      Alert.alert("Login failed", error.message);
+      const message = error?.message || "Unable to log in. Please check your credentials and try again.";
+      Alert.alert("Login failed", message);
     }
   };
 
@@ -74,12 +105,12 @@ export default function LoginScreen() {
               style={{
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: theme.border,
+                borderColor: errors.email ? theme.error || "#ff4444" : theme.border,
                 backgroundColor: theme.cardStrong,
                 minHeight: 52,
                 paddingHorizontal: 16,
                 justifyContent: "center",
-                marginBottom: 14
+                marginBottom: errors.email ? 4 : 14
               }}
             >
               <TextInput
@@ -93,10 +124,16 @@ export default function LoginScreen() {
                 textContentType="username"
                 returnKeyType="next"
                 blurOnSubmit={false}
+                editable={!isSubmitting}
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 style={{ color: theme.text, minHeight: 52 }}
               />
             </View>
+            {errors.email ? (
+              <AppText variant="caption" style={{ color: theme.error || "#ff4444", marginBottom: 10 }}>
+                {errors.email}
+              </AppText>
+            ) : null}
 
             <AppText variant="subheading" style={{ marginBottom: 8 }}>
               Password
@@ -105,13 +142,13 @@ export default function LoginScreen() {
               style={{
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: theme.border,
+                borderColor: errors.password ? theme.error || "#ff4444" : theme.border,
                 backgroundColor: theme.cardStrong,
                 minHeight: 52,
                 paddingHorizontal: 16,
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 14
+                marginBottom: errors.password ? 4 : 14
               }}
             >
               <TextInput
@@ -125,6 +162,7 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 textContentType="password"
                 returnKeyType="done"
+                editable={!isSubmitting}
                 onSubmitEditing={handleLogin}
                 style={{ flex: 1, color: theme.text, minHeight: 52 }}
               />
@@ -132,7 +170,17 @@ export default function LoginScreen() {
                 <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.mutedText} />
               </Pressable>
             </View>
-            <AppButton title="Login" onPress={handleLogin} />
+            {errors.password ? (
+              <AppText variant="caption" style={{ color: theme.error || "#ff4444", marginBottom: 10 }}>
+                {errors.password}
+              </AppText>
+            ) : null}
+
+            <AppButton
+              title="Login"
+              onPress={handleLogin}
+              loading={isSubmitting}
+            />
             <AppText variant="caption" style={{ marginTop: 16 }}>
               {hasFirebaseConfig
                 ? "example acounts: Student - student@limko.com, Lecturer - lecturer@limko.com, PRL - prl@limko.com, PL - khopotso.molati@limko.com, FMG - fmg@limko.com."
@@ -140,9 +188,15 @@ export default function LoginScreen() {
             </AppText>
           </View>
 
-          <AppButton title="Register (Students only)" variant="secondary" onPress={() => router.push("/register")} />
+          <AppButton
+            title="Register (Students only)"
+            variant="secondary"
+            onPress={() => router.push("/register")}
+            disabled={isSubmitting}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+

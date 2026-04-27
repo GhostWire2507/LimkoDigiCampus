@@ -13,10 +13,14 @@ import { useTheme } from "../contexts/ThemeContext";
 import { getRegistrationOptions, peekCachedData } from "../services/dataService";
 import { useLoad } from "../shared/useLoad";
 
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 // Lets a student choose a faculty, then narrows programmes and classes from that choice.
 export default function RegisterScreen() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, isSubmitting } = useAuth();
   const { theme } = useTheme();
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
@@ -33,6 +37,7 @@ export default function RegisterScreen() {
     programmeIds: [],
     assignedClassIds: []
   });
+  const [errors, setErrors] = useState({});
 
   const facultyOptions = useMemo(
     () => options.faculties.map((faculty) => ({ label: faculty.name, value: faculty.id })),
@@ -46,31 +51,30 @@ export default function RegisterScreen() {
     [form.facultyId, options.programmes]
   );
   const classOptions = useMemo(() => {
-    // Only show classes that belong to the selected faculty and programmes.
     const allowedClasses = options.classes.filter((classItem) => {
       if (classItem.facultyId !== form.facultyId) {
         return false;
       }
-
       if (!form.programmeIds.length) {
         return true;
       }
-
       return form.programmeIds.includes(classItem.programmeId);
     });
-
     return allowedClasses.map((classItem) => ({
       label: `${classItem.courseName} • ${classItem.displayName}`,
       value: classItem.id
     }));
   }, [form.facultyId, form.programmeIds, options.classes]);
 
-  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const update = (key, value) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    if (errors[key]) {
+      setErrors((current) => ({ ...current, [key]: null }));
+    }
+  };
 
-  // Changing faculty resets the lower-level choices so the hierarchy stays valid.
   const updateFaculty = (facultyId) => {
     const selectedFaculty = options.faculties.find((faculty) => faculty.id === facultyId);
-
     setForm((current) => ({
       ...current,
       facultyId,
@@ -78,9 +82,45 @@ export default function RegisterScreen() {
       programmeIds: [],
       assignedClassIds: []
     }));
+    setErrors((current) => ({
+      ...current,
+      programmeIds: null,
+      assignedClassIds: null
+    }));
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!form.fullName.trim()) {
+      nextErrors.fullName = "Full name is required";
+    } else if (form.fullName.trim().length < 2) {
+      nextErrors.fullName = "Full name must be at least 2 characters";
+    }
+
+    if (!form.email.trim()) {
+      nextErrors.email = "Email is required";
+    } else if (!validateEmail(form.email.trim())) {
+      nextErrors.email = "Please enter a valid email address";
+    }
+
+    if (!form.password) {
+      nextErrors.password = "Password is required";
+    } else if (form.password.length < 4) {
+      nextErrors.password = "Password must be at least 4 characters";
+    }
+
+    if (!form.assignedClassIds.length) {
+      nextErrors.assignedClassIds = "Please select at least one class";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleRegister = async () => {
+    if (!validate()) return;
+
     const selectedClasses = options.classes.filter((classItem) => form.assignedClassIds.includes(classItem.id));
     const selectedProgrammeIds = [...new Set(selectedClasses.map((classItem) => classItem.programmeId))];
 
@@ -96,7 +136,8 @@ export default function RegisterScreen() {
       });
       router.replace("/home");
     } catch (error) {
-      Alert.alert("Registration failed", error.message);
+      const message = error?.message || "Registration failed. Please try again.";
+      Alert.alert("Registration failed", message);
     }
   };
 
@@ -118,6 +159,7 @@ export default function RegisterScreen() {
               variant="secondary"
               onPress={() => (typeof router.canGoBack === "function" && router.canGoBack() ? router.back() : router.replace("/login"))}
               style={{ alignSelf: "flex-start", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, marginBottom: 12 }}
+              disabled={isSubmitting}
             />
             <AppText variant="title">Create Account</AppText>
             <AppText variant="caption" style={{ marginTop: 8 }}>
@@ -133,12 +175,12 @@ export default function RegisterScreen() {
               style={{
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: theme.border,
+                borderColor: errors.fullName ? theme.error || "#ff4444" : theme.border,
                 backgroundColor: theme.cardStrong,
                 minHeight: 52,
                 paddingHorizontal: 16,
                 justifyContent: "center",
-                marginBottom: 14
+                marginBottom: errors.fullName ? 4 : 14
               }}
             >
               <TextInput
@@ -150,10 +192,16 @@ export default function RegisterScreen() {
                 autoCorrect={false}
                 returnKeyType="next"
                 blurOnSubmit={false}
+                editable={!isSubmitting}
                 onSubmitEditing={() => emailRef.current?.focus()}
                 style={{ color: theme.text, minHeight: 52 }}
               />
             </View>
+            {errors.fullName ? (
+              <AppText variant="caption" style={{ color: theme.error || "#ff4444", marginBottom: 10 }}>
+                {errors.fullName}
+              </AppText>
+            ) : null}
 
             <AppText variant="subheading" style={{ marginBottom: 8 }}>
               Email
@@ -162,12 +210,12 @@ export default function RegisterScreen() {
               style={{
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: theme.border,
+                borderColor: errors.email ? theme.error || "#ff4444" : theme.border,
                 backgroundColor: theme.cardStrong,
                 minHeight: 52,
                 paddingHorizontal: 16,
                 justifyContent: "center",
-                marginBottom: 14
+                marginBottom: errors.email ? 4 : 14
               }}
             >
               <TextInput
@@ -182,10 +230,16 @@ export default function RegisterScreen() {
                 textContentType="username"
                 returnKeyType="next"
                 blurOnSubmit={false}
+                editable={!isSubmitting}
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 style={{ color: theme.text, minHeight: 52 }}
               />
             </View>
+            {errors.email ? (
+              <AppText variant="caption" style={{ color: theme.error || "#ff4444", marginBottom: 10 }}>
+                {errors.email}
+              </AppText>
+            ) : null}
 
             <AppText variant="subheading" style={{ marginBottom: 8 }}>
               Password
@@ -194,13 +248,13 @@ export default function RegisterScreen() {
               style={{
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: theme.border,
+                borderColor: errors.password ? theme.error || "#ff4444" : theme.border,
                 backgroundColor: theme.cardStrong,
                 minHeight: 52,
                 paddingHorizontal: 16,
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 14
+                marginBottom: errors.password ? 4 : 14
               }}
             >
               <TextInput
@@ -214,6 +268,7 @@ export default function RegisterScreen() {
                 autoCorrect={false}
                 textContentType="password"
                 returnKeyType="done"
+                editable={!isSubmitting}
                 onSubmitEditing={handleRegister}
                 style={{ flex: 1, color: theme.text, minHeight: 52 }}
               />
@@ -221,6 +276,12 @@ export default function RegisterScreen() {
                 <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.mutedText} />
               </Pressable>
             </View>
+            {errors.password ? (
+              <AppText variant="caption" style={{ color: theme.error || "#ff4444", marginBottom: 10 }}>
+                {errors.password}
+              </AppText>
+            ) : null}
+
             <SelectField
               label="Role"
               value={form.role}
@@ -238,7 +299,10 @@ export default function RegisterScreen() {
             <MultiSelectField
               label="Programmes"
               values={form.programmeIds}
-              onChange={(value) => setForm((current) => ({ ...current, programmeIds: value, assignedClassIds: [] }))}
+              onChange={(value) => {
+                setForm((current) => ({ ...current, programmeIds: value, assignedClassIds: [] }));
+                setErrors((current) => ({ ...current, assignedClassIds: null }));
+              }}
               options={programmeOptions}
               placeholder="Choose the programmes you want to register for"
             />
@@ -249,10 +313,21 @@ export default function RegisterScreen() {
               options={classOptions}
               placeholder="Choose the classes that match your registration"
             />
-            <AppButton title="Register" onPress={handleRegister} />
+            {errors.assignedClassIds ? (
+              <AppText variant="caption" style={{ color: theme.error || "#ff4444", marginBottom: 10 }}>
+                {errors.assignedClassIds}
+              </AppText>
+            ) : null}
+
+            <AppButton
+              title="Register"
+              onPress={handleRegister}
+              loading={isSubmitting}
+            />
           </Card>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+

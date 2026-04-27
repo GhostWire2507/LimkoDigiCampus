@@ -1,9 +1,20 @@
-# Expo Router / EAS Build Fix Tracker
+# Fix Plan
 
-- [x] Step 1: Initial assessment complete
-- [x] Step 2: Clean reset (removed node_modules + package-lock.json)
-- [x] Step 3: Reinstall clean with `npm install` (998 packages, lockfile regenerated)
-- [x] Step 4: Verify Expo Router config (main entry, src/app routes) — all correct
-- [x] Step 5: Run `npx expo-doctor` — 17/17 checks passed, no issues
-- [ ] Step 6: Run EAS build (`eas build -p android --profile preview`)
+## 1. Core Components
+- [x] `src/components/AppButton.js` — Add `loading` prop with ActivityIndicator inside button
+- [x] `src/components/FormFields.js` — Left as restored by user (original state preserved)
+
+## 2. CSV Export Fix
+- [x] `src/services/exportService.js` — Added UTF-8 BOM; made web download robust (link.click + dispatchEvent fallback); on native, export now uses Sharing.shareAsync so the file is actually accessible
+
+## 3. Login / Register UX
+- [x] `src/app/login.js` — Uses AppButton `loading={isSubmitting}`; removed separate ActivityIndicator
+- [x] `src/app/register.js` — Uses AppButton `loading={isSubmitting}`; fixed dependent error clearing when Faculty/Programmes change; removed separate ActivityIndicator
+
+## 4. Other Action Screens
+- [x] `src/app/reports.js` — Uses AppButton `loading` for CSV buttons and Save Feedback; removed separate ActivityIndicator
+- [x] `src/app/report-form.js` — Uses AppButton `loading={saving}`
+- [x] `src/app/attendance.js` — Uses AppButton `loading` for save and delete
+- [x] `src/app/course-form.js` — Uses AppButton `loading={saving}`
+- [x] `src/app/ratings.js` — Uses AppButton `loading` for submit and delete
 

@@ -8,6 +8,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Load demo data first, then restore the last known user session.
@@ -28,28 +29,44 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
+      isSubmitting,
       signIn: async (email, password) => {
-        const nextUser = await loginUser(email, password);
-        setUser(nextUser);
-        await saveItem("currentUser", nextUser);
-        // Preload other screens in the background after a successful login.
-        void preloadWorkspaceData(nextUser);
-        return nextUser;
+        setIsSubmitting(true);
+        try {
+          const nextUser = await loginUser(email, password);
+          setUser(nextUser);
+          await saveItem("currentUser", nextUser);
+          // Preload other screens in the background after a successful login.
+          void preloadWorkspaceData(nextUser);
+          return nextUser;
+        } finally {
+          setIsSubmitting(false);
+        }
       },
       signUp: async (payload) => {
-        const nextUser = await registerUser(payload);
-        setUser(nextUser);
-        await saveItem("currentUser", nextUser);
-        void preloadWorkspaceData(nextUser);
-        return nextUser;
+        setIsSubmitting(true);
+        try {
+          const nextUser = await registerUser(payload);
+          setUser(nextUser);
+          await saveItem("currentUser", nextUser);
+          void preloadWorkspaceData(nextUser);
+          return nextUser;
+        } finally {
+          setIsSubmitting(false);
+        }
       },
       signOut: async () => {
-        await signOutUser();
-        setUser(null);
-        await removeItem("currentUser");
+        setIsSubmitting(true);
+        try {
+          await signOutUser();
+          setUser(null);
+          await removeItem("currentUser");
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     }),
-    [loading, user]
+    [loading, user, isSubmitting]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -58,3 +75,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
