@@ -86,7 +86,7 @@ function DashboardScreen() {
       ? [
           { label: "Classes Today", value: classes.length, helper: "Visible in your workspace" },
           { label: "Attendance Rate", value: `${attendanceAverage}%`, helper: "Average recorded presence" },
-          { label: "Feedback Score", value: averageRating ? `${averageRating}/5` : "0", helper: "Your visible lecturer ratings" }
+          { label: "Feedback Score", value: averageRating ? `${averageRating}/5` : "0", helper: "Your lecturer's ratings" }
         ]
       : [
           { label: "Classes Today", value: classes.length, helper: "Visible in your workspace" },
