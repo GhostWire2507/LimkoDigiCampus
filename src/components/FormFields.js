@@ -19,26 +19,13 @@ const TextFieldComponent = forwardRef(function TextField(
     textContentType,
     returnKeyType,
     onSubmitEditing,
-    blurOnSubmit,
-    isFocused,
-    onFocus,
-    onBlur
+    blurOnSubmit
   },
   ref
 ) {
   const { theme } = useTheme();
   const [revealed, setRevealed] = useState(false);
-  const [localFocused, setLocalFocused] = useState(false);
-  const focused = typeof isFocused === "boolean" ? isFocused : localFocused;
   const shouldHide = secureTextEntry && !revealed;
-  const handleFocus = (event) => {
-    setLocalFocused(true);
-    onFocus?.(event);
-  };
-  const handleBlur = (event) => {
-    setLocalFocused(false);
-    onBlur?.(event);
-  };
 
   return (
     <View style={{ marginBottom: 14 }}>
@@ -49,18 +36,13 @@ const TextFieldComponent = forwardRef(function TextField(
         style={{
           borderRadius: 18,
           borderWidth: 1,
-          borderColor: focused ? theme.mutedText : theme.border,
+          borderColor: theme.border,
           backgroundColor: theme.cardStrong,
           minHeight: multiline ? 120 : 52,
           paddingHorizontal: 16,
           paddingVertical: multiline ? 14 : 0,
           flexDirection: "row",
-          alignItems: multiline ? "flex-start" : "center",
-          shadowColor: focused ? theme.glow : "transparent",
-          shadowOpacity: focused ? 1 : 0,
-          shadowRadius: focused ? 10 : 0,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: focused ? 3 : 0
+          alignItems: multiline ? "flex-start" : "center"
         }}
       >
         <TextInput
@@ -78,8 +60,6 @@ const TextFieldComponent = forwardRef(function TextField(
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
           blurOnSubmit={blurOnSubmit}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
           style={{
             flex: 1,
             color: theme.text,
@@ -101,7 +81,7 @@ const TextFieldComponent = forwardRef(function TextField(
   );
 });
 
-export const TextField = memo(TextFieldComponent);
+export const TextField = TextFieldComponent;
 
 // Simple chip-style single-select field used for short option lists.
 export function SelectField({ label, value, options, onChange, placeholder = "Select an option" }) {

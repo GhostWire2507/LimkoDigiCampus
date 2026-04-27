@@ -15,6 +15,11 @@ import { useLoad } from "../shared/useLoad";
 function ClassDetailScreen() {
   const { user } = useAuth();
   const { classId } = useLocalSearchParams();
+
+  if (!user) {
+    return null;
+  }
+
   const [classes] = useLoad(() => getClassesForRole(user), user);
   const [reports] = useLoad(() => getReportsForRole(user), user);
   const classItem = useMemo(() => classes.find((item) => item.id === classId) || null, [classes, classId]);

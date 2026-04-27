@@ -15,6 +15,11 @@ import { useLoad } from "../shared/useLoad";
 // Combines attendance, reporting, and ratings into one leadership dashboard.
 function MonitoringScreen() {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const [monitoring] = useLoad(() => getMonitoringForRole(user), user);
   const overallAttendance = average(monitoring.map((item) => item.attendanceAverage));
   const overallRating = average(monitoring.map((item) => item.averageRating));

@@ -16,6 +16,11 @@ function ReportFormScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const { classId } = useLocalSearchParams();
+
+  if (!user) {
+    return null;
+  }
+
   const [classes] = useLoad(() => getClassesForRole(user), user);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [step, setStep] = useState(1);

@@ -37,6 +37,11 @@ function SeniorLecturerFeedbackForm({ report, onSaved }) {
 // Shows report history, exports, and leadership review actions in one place.
 function ReportsScreen() {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const [reports, setReports] = useLoad(() => getReportsForRole(user), user);
   const [query, setQuery] = useState("");
   const filteredReports = filterByQuery(reports, query, [

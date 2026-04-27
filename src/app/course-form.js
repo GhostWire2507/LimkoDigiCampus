@@ -14,6 +14,11 @@ import { useLoad } from "../shared/useLoad";
 function CourseFormScreen() {
   const { user } = useAuth();
   const router = useRouter();
+
+  if (!user) {
+    return null;
+  }
+
   const [programmes] = useLoad(() => getProgrammesForRole(user), user);
   const [directory] = useLoad(() => getUserDirectory(user), user);
   const [values, setValues] = useState({

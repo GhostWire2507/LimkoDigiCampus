@@ -17,6 +17,11 @@ import { useLoad } from "../shared/useLoad";
 function ClassesScreen() {
   const { user } = useAuth();
   const router = useRouter();
+
+  if (!user) {
+    return null;
+  }
+
   const [classes, setClasses] = useLoad(() => getClassesForRole(user), user);
   const [query, setQuery] = useState("");
 

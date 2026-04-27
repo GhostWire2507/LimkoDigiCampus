@@ -14,6 +14,11 @@ import { useLoad } from "../shared/useLoad";
 // Lets lecturers capture attendance while leadership can still review the history.
 function AttendanceScreen() {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const [classes] = useLoad(() => getClassesForRole(user), user);
   const [attendance, setAttendance] = useLoad(() => getAttendanceForRole(user), user);
   const [selectedClassId, setSelectedClassId] = useState("");

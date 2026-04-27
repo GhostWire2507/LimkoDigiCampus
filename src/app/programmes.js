@@ -15,6 +15,11 @@ import { useLoad } from "../shared/useLoad";
 // Lists programmes that fall inside the signed-in user's allowed scope.
 function ProgrammesScreen() {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const [programmes] = useLoad(() => getProgrammesForRole(user), user);
   const [query, setQuery] = useState("");
   const filteredProgrammes = filterByQuery(programmes, query, ["name", "facultyName", "code"]);

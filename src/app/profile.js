@@ -15,6 +15,10 @@ function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { mode, toggleTheme } = useTheme();
 
+  if (!user) {
+    return null;
+  }
+
   const handleLogout = async () => {
     await signOut();
     router.replace("/login");

@@ -14,6 +14,11 @@ import { useLoad } from "../shared/useLoad";
 // Students submit lecturer feedback here, while leadership can review or remove entries.
 function RatingsScreen() {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const [ratings, setRatings] = useLoad(() => getRatingsForRole(user), user);
   const [classes] = useLoad(() => getClassesForRole(user), user);
   const [selectedClassId, setSelectedClassId] = useState("");

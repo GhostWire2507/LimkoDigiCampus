@@ -15,6 +15,11 @@ import { useState } from "react";
 // Gives leadership users a quick overview of faculties in their current scope.
 function FacultiesScreen() {
   const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
+
   const [faculties] = useLoad(() => getFacultiesForRole(user), user);
   const [query, setQuery] = useState("");
   const filteredFaculties = filterByQuery(faculties, query, ["name", "code"]);
