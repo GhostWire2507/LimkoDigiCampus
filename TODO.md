@@ -1,20 +1,15 @@
-# Fix Plan
+# EAS Build Fix - COMPLETED ✅
 
-## 1. Core Components
-- [x] `src/components/AppButton.js` — Add `loading` prop with ActivityIndicator inside button
-- [x] `src/components/FormFields.js` — Left as restored by user (original state preserved)
+## Root Cause
+- Lockfile mismatch: `@react-native-async-storage/async-storage@1.24.0` in lockfile vs `2.2.0` in package.json
+- EAS uses `npm ci` which is strict on version consistency
 
-## 2. CSV Export Fix
-- [x] `src/services/exportService.js` — Added UTF-8 BOM; made web download robust (link.click + dispatchEvent fallback); on native, export now uses Sharing.shareAsync so the file is actually accessible
+## Fix Applied
+1. Clean reset: Removed `node_modules` and `package-lock.json`
+2. Reinstalled: `npm install` regenerated clean lockfile
+3. EAS build: `eas build -p android --profile preview`
 
-## 3. Login / Register UX
-- [x] `src/app/login.js` — Uses AppButton `loading={isSubmitting}`; removed separate ActivityIndicator
-- [x] `src/app/register.js` — Uses AppButton `loading={isSubmitting}`; fixed dependent error clearing when Faculty/Programmes change; removed separate ActivityIndicator
-
-## 4. Other Action Screens
-- [x] `src/app/reports.js` — Uses AppButton `loading` for CSV buttons and Save Feedback; removed separate ActivityIndicator
-- [x] `src/app/report-form.js` — Uses AppButton `loading={saving}`
-- [x] `src/app/attendance.js` — Uses AppButton `loading` for save and delete
-- [x] `src/app/course-form.js` — Uses AppButton `loading={saving}`
-- [x] `src/app/ratings.js` — Uses AppButton `loading` for submit and delete
-
+## Result
+- Build ID: 531fc95f-9b3c-4218-8fbc-684cb1efc7e7
+- Status: **SUCCESS**
+- Download: https://expo.dev/accounts/ghostwire2507/projects/limko-digi-campus/builds/531fc95f-9b3c-4218-8fbc-684cb1efc7e7
